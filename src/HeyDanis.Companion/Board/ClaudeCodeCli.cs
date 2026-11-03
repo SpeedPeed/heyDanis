@@ -48,10 +48,9 @@ public static class ClaudeCodeCli
     }
 
     public const string NotInstalledMessage =
-        "Die Claude-Code-CLI ist nicht installiert. So geht's: Eingabeaufforderung öffnen und eingeben: " +
-        "curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd – " +
-        "danach eine neue Eingabeaufforderung öffnen, „claude“ eingeben, mit dem Team-Konto anmelden und mit /exit beenden. " +
-        "Dann heyDanis neu starten.";
+        "Die Claude-Code-CLI ist nicht installiert. So geht's: PowerShell öffnen (Windows-Taste, „PowerShell“) und eingeben: " +
+        "irm https://claude.ai/install.ps1 | iex – danach ein neues PowerShell-Fenster öffnen, „claude“ eingeben, " +
+        "mit dem Team-Konto anmelden („Claude account with subscription“) und mit /exit beenden. Dann heyDanis neu starten.";
 
     public const string NotLoggedInMessage =
         "Die Claude-CLI ist nicht angemeldet. Öffne eine Eingabeaufforderung, gib „claude“ ein, " +
