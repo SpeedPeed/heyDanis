@@ -23,6 +23,11 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
   401 = Key abgelehnt) und Auswahlfelder waren weiß/unlesbar. Behoben: echte Anthropic-Fehlermeldung,
   Fenster nur einmal, Key-Format-Prüfung (Abo-Token vs. API-Key), dunkles ComboBox-Template.
   Ursache des 401 noch unklar → Nutzer prüft mit „Test“-Button.
+- **Zweiter M3-Test:** Antworten kommen an (Sprechblase funktioniert), aber **keine Stimme**
+  auf keinem Ausgabegerät, und der Cursor **zeigt nicht** (nur Beschreibung). Gegenmaßnahmen:
+  Structured Outputs (json_schema) für das Pointing-Protokoll + strengere Zeige-Regel im Prompt;
+  „Stimme testen“-Button + `[TTS]`/`[AUDIO]`-Logging; NAudio-Wiedergabefehler werden nicht mehr
+  verschluckt. Ursache Stimme noch offen → Ergebnis vom Stimmtest abwarten.
 - Als Nächstes: Nutzer testet M3 → danach **M4** (Overlay/Zeigen prüfen, Text-Eingabe, Diktat).
 
 ## Ansprüche (vom Nutzer)
