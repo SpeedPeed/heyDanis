@@ -6,18 +6,18 @@ namespace HeyDanis.Companion;
 /// <summary>
 /// Manages a queue of TTS sentences that play sequentially without gaps.
 /// Sentences are enqueued as they arrive from the LLM stream (at sentence boundaries),
-/// and each one is sent to ElevenLabs and played in order. This overlaps TTS HTTP
+/// and each one is synthesized (Piper, Windows voice or ElevenLabs) and played in order. This overlaps TTS HTTP
 /// requests with playback of prior sentences, cutting perceived latency.
 /// </summary>
 internal sealed class TtsPipeline : IAsyncDisposable
 {
-    private readonly ElevenLabsTtsClient _ttsClient;
+    private readonly ITextToSpeechClient _ttsClient;
     private readonly Channel<string> _sentenceChannel;
     private readonly CancellationTokenSource _pipelineCts;
     private readonly Task _consumerTask;
     private readonly Action<string>? _onSpeakStarted;
 
-    public TtsPipeline(ElevenLabsTtsClient ttsClient, CancellationToken externalCt, Action<string>? onSpeakStarted = null)
+    public TtsPipeline(ITextToSpeechClient ttsClient, CancellationToken externalCt, Action<string>? onSpeakStarted = null)
     {
         _ttsClient = ttsClient;
         _onSpeakStarted = onSpeakStarted;

@@ -45,8 +45,8 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
     private readonly GlobalPushToTalkHook _hook;
     private ILlmClient _llmClient;
     private readonly object _swapLock = new();
-    private readonly AssemblyAiStreamingTranscriber _transcriber;
-    private readonly ElevenLabsTtsClient _ttsClient;
+    private readonly ISpeechTranscriber _transcriber;
+    private readonly ITextToSpeechClient _ttsClient;
     private readonly Dispatcher _dispatcher;
     private readonly OverlayWindowManager? _overlayManager;
     private readonly string? _microphoneDeviceId;
@@ -67,7 +67,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
 
     // Active recording session state
     private MicrophoneCapture? _activeMicCapture;
-    private TranscriptionSession? _activeTranscriptionSession;
+    private ISpeechTranscriptionSession? _activeTranscriptionSession;
     private CancellationTokenSource? _micCaptureCts;
 
     // Capture-on-press: kick off screen capture when the key is first pressed so
@@ -167,8 +167,8 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         CompanionViewModel viewModel,
         GlobalPushToTalkHook hook,
         ILlmClient llmClient,
-        AssemblyAiStreamingTranscriber transcriber,
-        ElevenLabsTtsClient ttsClient,
+        ISpeechTranscriber transcriber,
+        ITextToSpeechClient ttsClient,
         Dispatcher dispatcher,
         OverlayWindowManager? overlayManager = null,
         string? microphoneDeviceId = null,
@@ -368,7 +368,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
     }
 
     /// <summary>
-    /// Detects whether an exception from <see cref="AssemblyAiStreamingTranscriber.StartSessionAsync"/>
+    /// Detects whether an exception from <see cref="ISpeechTranscriber.StartSessionAsync"/>
     /// indicates a missing or unauthorized API key (vs. a transient network issue).
     /// </summary>
     private static bool IsTranscriptionAuthError(Exception ex)

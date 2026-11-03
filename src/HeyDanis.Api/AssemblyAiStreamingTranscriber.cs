@@ -9,7 +9,7 @@ namespace HeyDanis.Api;
 /// Streams real-time speech-to-text via AssemblyAI's v3 WebSocket API,
 /// mirroring <c>AssemblyAIStreamingTranscriptionProvider.swift</c> in the Mac reference.
 /// </summary>
-public sealed class AssemblyAiStreamingTranscriber
+public sealed class AssemblyAiStreamingTranscriber : ISpeechTranscriber
 {
     private static readonly Uri AssemblyAiWsBase = new("wss://streaming.assemblyai.com/v3/ws");
     private static readonly Uri AssemblyAiTokenUri = new("https://streaming.assemblyai.com/v3/token?expires_in_seconds=60");
@@ -34,6 +34,16 @@ public sealed class AssemblyAiStreamingTranscriber
     public async Task<TranscriptionSession> StartSessionAsync(
         IReadOnlyList<string>? keyterms = null,
         CancellationToken ct = default)
+        => await StartAssemblyAiSessionAsync(keyterms, ct).ConfigureAwait(false);
+
+    async Task<ISpeechTranscriptionSession> ISpeechTranscriber.StartSessionAsync(
+        IReadOnlyList<string>? keyterms,
+        CancellationToken ct)
+        => await StartAssemblyAiSessionAsync(keyterms, ct).ConfigureAwait(false);
+
+    private async Task<TranscriptionSession> StartAssemblyAiSessionAsync(
+        IReadOnlyList<string>? keyterms,
+        CancellationToken ct)
     {
         var token = await FetchTokenAsync(ct).ConfigureAwait(false);
         var wsUri = BuildWebSocketUri(token, keyterms);
@@ -127,7 +137,7 @@ public sealed class AssemblyAiStreamingTranscriber
 /// Represents an active AssemblyAI streaming transcription session.
 /// Audio frames are written in; transcript updates come out via events.
 /// </summary>
-public sealed class TranscriptionSession : IDisposable
+public sealed class TranscriptionSession : ISpeechTranscriptionSession
 {
     private const double ExplicitFinalGracePeriodSeconds = 1.4;
 

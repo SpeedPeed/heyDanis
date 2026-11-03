@@ -10,7 +10,7 @@ namespace HeyDanis.Api;
 /// Streams TTS audio from ElevenLabs directly via the ElevenLabs API,
 /// mirroring ElevenLabsTTSClient.swift.
 /// </summary>
-public class ElevenLabsTtsClient : IDisposable
+public class ElevenLabsTtsClient : ITextToSpeechClient
 {
     private static readonly Uri ApiBaseUri = new("https://api.elevenlabs.io");
 
