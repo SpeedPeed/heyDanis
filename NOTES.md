@@ -3,7 +3,47 @@
 Persönlicher KI-Buddy für Windows (Klon von HeyClicky). Basis: Windows-Fork
 https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa/clicky).
 
-## Stand
+## ▶ AKTUELLER STAND – hier in einer neuen Session weitermachen
+
+**Arbeitsweise mit dem Nutzer:** Deutsch, kurz und konkret, er ist HTL-Schüler, kein Profi. Kosten
+minimieren hat Priorität. Direkt auf `main` committen und pushen; nach jedem Push die GitHub Action
+abwarten (`gh run list --repo SpeedPeed/heyDanis`), dann dem Nutzer sagen, **welches Update-Paket**
+er laden soll (meist `heyDanis-UPDATE-klein`, siehe „Updates beim Nutzer“). Nutzer hat langsames
+Internet, zwei Monitore, Windows 11, deutsche Tastatur, Pixel 8 Pro.
+Beim Testen hilft: Hauptfenster-Knöpfe **„Diagnose kopieren“** (Logzeilen + Monitorinfo in die
+Zwischenablage) und **„Monitor-Test“** (Kalibrierkreise auf jedem Monitor).
+
+**Funktioniert laut Nutzer:** Sprechen (Strg+Alt) mit Whisper → Haiku → Piper „Thorsten“, Sprechblase,
+Zeigen auf Monitor 1 (mit Zoom-Verfeinerung), Text-Eingabe (Strg+Alt+Leertaste), Diktat (Strg+Shift),
+Schritt-für-Schritt-Zeigen, Kostenanzeige.
+
+**Gebaut, vom Nutzer noch NICHT getestet:**
+1. **Erklär-Tafel** (siehe Abschnitt unten) – braucht die Claude-CLI.
+2. **Mixed-DPI-Fix für Monitor 2** (Overlay per `SetWindowPos` in physischen Pixeln) + **Monitor-Test**.
+3. **OCR-Snapping** fürs Markieren (Kreise auf Wörter per Windows-OCR); zuletzt „näher, aber nicht exakt“.
+
+**Offene Rückmeldungen vom Nutzer (zuerst abfragen):**
+- Claude-CLI: Nutzer installiert gerade (PowerShell: `irm https://claude.ai/install.ps1 | iex`, dann
+  `claude` → mit Team-Konto anmelden). Ergebnis von `claude --version` und `echo $env:ANTHROPIC_API_KEY`
+  (soll leer sein) steht aus.
+- Ergebnis **Monitor-Test** und **Windows-Skalierung + Auflösung** beider Monitore.
+- Erster Test der **Tafel** („Zeichne mir den Satz des Pythagoras an die Tafel“, „Zeig mir das in 3D“).
+- Ob kostenpflichtige Upgrades gewünscht sind (A Sonnet nur fürs Zeigen ~3 $/Monat, B Sonnet für alles
+  ~8–10 $/Monat, C AssemblyAI-Live-Spracherkennung ~Cent/Monat, D ElevenLabs ~5 $/Monat). Noch nicht
+  entschieden; Nutzer hat bisher nur „Tafel über das Abo“ gewählt.
+
+**Nächste Schritte (vom Nutzer so bestätigt: Tafel → Aktionen → Agent):**
+1. Tafel beim Nutzer zum Laufen bringen (CLI-Install begleiten, Fehler per „Diagnose kopieren“).
+2. **Aktionen**: Websites/Programme/Ordner öffnen, im Web suchen („öffne YouTube“, „such mir Videos zu
+   Integralen“). Haiku reicht; über ein neues Feld im strukturierten JSON (wie `showBoard`). Alles, was
+   etwas sendet/löscht/kauft, nur mit Bestätigungsdialog.
+3. **M5 Agent-Modus** über `claude -p` (Team-Abo), Codewort „hey agent danis“ (unscharf matchen),
+   mehrere Agenten parallel, Status im Panel, Windows-Benachrichtigung, Bestätigung riskanter Aktionen
+   (PreToolUse-Hook). `ClaudeCodeCli.RunPrintModeAsync` ist schon da und wiederverwendbar.
+4. Danach: Apps steuern (Computer Use, am Schluss), M6 (Autostart, Installer, eingebauter Updater,
+   Rest der UI auf Deutsch), M7 Android.
+
+## Verlauf (Details zu früheren Tests)
 - Phase 0 + 1 erledigt, Plan vom Nutzer freigegeben (direkt auf `main` arbeiten).
 - **M1 erledigt:** Code importiert, Ballast entfernt, umbenannt, eigenes Icon, CI-Build.
 - **M2 teilweise:** Exe startet beim Nutzer. Claude-Code-CLI war noch **nicht installiert**
@@ -107,7 +147,8 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
 - [x] M1 Import + Umbenennung + Aufräumen + CI-Build
 - [ ] M2 Setup beim Nutzer (Key, Mikrofon, Claude Code Login) – CLI-Installation offen
 - [x] M3 Kernschleife: Hotkey → Whisper → Screenshot → Haiku → Piper – vom Nutzer bestätigt („passt jetzt super“)
-- [~] M4 Overlay/Zeigen Multi-Monitor, Markierungen, Text-Eingabe, Diktat – gebaut, Test durch Nutzer offen
+- [~] M4 Overlay/Zeigen Multi-Monitor, Markierungen, Text-Eingabe, Diktat – Text/Diktat ✅, Monitor 2 + Markieren: Fix gebaut, Test offen
+- [~] Erklär-Tafel (vorgezogen) – gebaut, Test offen (CLI fehlt noch)
 - [ ] M5 Agent-Modus (parallel, Status, Benachrichtigung, Bestätigung)
 - [ ] M6 Persönlichkeit, Extras, Autostart, Installer
 - [ ] M7 (später, Wunsch des Nutzers) Android-Version für **Pixel 8 Pro** – erst nach M6
