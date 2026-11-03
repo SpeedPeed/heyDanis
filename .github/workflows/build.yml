@@ -61,6 +61,24 @@ jobs:
           path: publish/update/
           retention-days: 30
 
+      # Medium update: heyDanis' files plus the speech libraries (Whisper, sherpa-onnx,
+      # onnxruntime). Needed when one of those packages changes, still far below 85 MB.
+      - name: Collect speech-library update package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force publish/update-speech | Out-Null
+          Get-ChildItem publish/win-x64 -File |
+            Where-Object { $_.Name -like 'heyDanis*' -or $_.Name -like 'sherpa*' -or $_.Name -like 'onnxruntime*' -or $_.Name -like 'Whisper*' } |
+            Copy-Item -Destination publish/update-speech
+          Copy-Item -Recurse publish/win-x64/runtimes publish/update-speech/runtimes
+
+      - name: Upload speech-library update package
+        uses: actions/upload-artifact@v4
+        with:
+          name: heyDanis-UPDATE-mit-Sprachbibliotheken
+          path: publish/update-speech/
+          retention-days: 30
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

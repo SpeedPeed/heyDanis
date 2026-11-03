@@ -28,6 +28,10 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
   Structured Outputs (json_schema) für das Pointing-Protokoll + strengere Zeige-Regel im Prompt;
   „Stimme testen“-Button + `[TTS]`/`[AUDIO]`-Logging; NAudio-Wiedergabefehler werden nicht mehr
   verschluckt. Ursache Stimme noch offen → Ergebnis vom Stimmtest abwarten.
+- **Ursache „keine Stimme“ gefunden (in Linux reproduziert):** sherpa-onnx 2.x hat espeak-ng entfernt →
+  Piper erzeugte 0 Samples. Gepinnt auf **1.13.8** (nicht upgraden!). Außerdem parallele Downloads
+  desselben Modells verhindert, Downloads setzen nach Abbruch fort (HTTP Range).
+  Round-Trip-Test Piper → Whisper Base im Container: Text korrekt erkannt.
 - Als Nächstes: Nutzer testet M3 → danach **M4** (Overlay/Zeigen prüfen, Text-Eingabe, Diktat).
 
 ## Ansprüche (vom Nutzer)
@@ -99,6 +103,8 @@ Vom PC übernehmbar: Prompts, Pointing-Protokoll (JSON), Kostenlogik.
 - Nutzer hat **langsames Internet**. CI baut zusätzlich `heyDanis-UPDATE-klein` (~0,8 MB, nur
   heyDanis' eigene Dateien). Dem Nutzer immer sagen, **ob das kleine Update reicht** oder ob
   sich NuGet-Pakete geändert haben (dann volles Paket `heyDanis-win-x64`, ~85 MB).
+- Drittes Artefakt `heyDanis-UPDATE-mit-Sprachbibliotheken` (~10 MB): heyDanis + Whisper/sherpa/onnxruntime,
+  wenn sich nur Sprach-Pakete geändert haben.
 - Idee für M6: eingebauter Updater, der nur geänderte Dateien von GitHub Releases lädt.
 
 ## Hinweise für neue Sessions
