@@ -38,6 +38,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private string _selectedSpeechRecognitionId = DefaultSpeechRecognitionId;
     private string _selectedVoiceId = DefaultVoiceId;
     private double _speakingRate = 1.05;
+    private bool _precisePointingEnabled = true;
 
     // True when the field shows the saved placeholder instead of the real key.
     private bool _anthropicKeyIsSaved;
@@ -194,6 +195,18 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             var clamped = Math.Round(Math.Clamp(value, 0.7, 1.6), 2);
             if (Math.Abs(_speakingRate - clamped) < 0.001) return;
             _speakingRate = clamped;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Zoom refinement for the pointer (see SettingsStore.PrecisePointingEnabled).</summary>
+    public bool PrecisePointingEnabled
+    {
+        get => _precisePointingEnabled;
+        set
+        {
+            if (_precisePointingEnabled == value) return;
+            _precisePointingEnabled = value;
             OnPropertyChanged();
         }
     }
@@ -511,6 +524,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         _settingsStore.SpeechRecognitionChoice = _selectedSpeechRecognitionId;
         _settingsStore.VoiceChoice = _selectedVoiceId;
         _settingsStore.SpeakingRate = _speakingRate;
+        _settingsStore.PrecisePointingEnabled = _precisePointingEnabled;
 
         SettingsSaved?.Invoke(this, EventArgs.Empty);
     }
@@ -646,6 +660,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         _selectedSpeechRecognitionId = NormalizeChoice(_settingsStore.SpeechRecognitionChoice, SpeechRecognitionChoices, DefaultSpeechRecognitionId);
         _selectedVoiceId = NormalizeChoice(_settingsStore.VoiceChoice, VoiceChoices, DefaultVoiceId);
         _speakingRate = Math.Clamp(_settingsStore.SpeakingRate, 0.7, 1.6);
+        _precisePointingEnabled = _settingsStore.PrecisePointingEnabled;
 
         // Pre-populate saved-key placeholders.
         if (_secretsStore.Exists(SecretsStore.AnthropicApiKey))

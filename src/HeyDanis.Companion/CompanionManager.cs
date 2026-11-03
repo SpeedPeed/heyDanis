@@ -56,6 +56,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
     private readonly bool _useRedesignedPointingProtocol;
     private string _llmProvider;
     private bool _hasOpenedSettingsForKeyError;
+    private readonly bool _precisePointingEnabled;
     private string _llmModel;
 
     private readonly List<Message> _conversationHistory = new();
@@ -213,8 +214,10 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         Func<Task>? prepareForCaptureAsync = null,
         string llmProvider = "unknown",
         string llmModel = "unknown",
-        bool useRedesignedPointingProtocol = false)
+        bool useRedesignedPointingProtocol = false,
+        bool precisePointingEnabled = false)
     {
+        _precisePointingEnabled = precisePointingEnabled;
         _viewModel = viewModel;
         _hook = hook;
         _llmClient = llmClient;
@@ -821,21 +824,38 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             : StructuredPointingSystemPrompt;
 
         timing.Mark("llm-request-start", $"history={historySnapshot.Count} screens={labeledScreens.Count} protocol={(gamerModeEnabled ? "gamer-drawing" : "structured-pointing")}");
-        await foreach (var delta in _llmClient.SendAsync(
-            historySnapshot,
-            labeledScreens,
-            KnowledgeContextProvider.BuildPrompt(systemPrompt),
-            transcript,
-            StructuredPointingResponseSchema,
-            ct).ConfigureAwait(false))
+        for (var attempt = 1; ; attempt++)
         {
-            if (!firstLlmTokenSeen)
+            try
             {
-                firstLlmTokenSeen = true;
-                timing.Mark("first-llm-token", $"deltaChars={delta.Length}");
-            }
+                await foreach (var delta in _llmClient.SendAsync(
+                    historySnapshot,
+                    labeledScreens,
+                    KnowledgeContextProvider.BuildPrompt(systemPrompt),
+                    transcript,
+                    StructuredPointingResponseSchema,
+                    ct).ConfigureAwait(false))
+                {
+                    if (!firstLlmTokenSeen)
+                    {
+                        firstLlmTokenSeen = true;
+                        timing.Mark("first-llm-token", $"deltaChars={delta.Length}");
+                    }
 
-            responseBuilder.Append(delta);
+                    responseBuilder.Append(delta);
+                }
+                break;
+            }
+            catch (ImageTooLargeForModelException tooLarge) when (attempt == 1)
+            {
+                // The model is on the standard image tier: shrink the screenshots exactly the
+                // way Claude would and ask again, so pointing coordinates still line up.
+                DebugLog.Write($"[POINT] image tier fallback: {tooLarge.Message}");
+                ClaudeImageSizing.CurrentTier = ClaudeImageSizing.Standard;
+                screens = screens.Select(screen => ScreenCapture.ResizeToTier(screen, ClaudeImageSizing.Standard)).ToList();
+                labeledScreens = WithDimensionLabels(screens);
+                responseBuilder.Clear();
+            }
         }
 
         timing.Mark("llm-response-end", $"responseChars={responseBuilder.Length} protocol=structured-pointing");
@@ -866,24 +886,8 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             _conversationHistory.RemoveRange(0, _conversationHistory.Count - MaxConversationHistory);
         }
 
-        if (gamerModeEnabled && drawingDirectives.Count > 0 && _overlayManager is not null)
-        {
-            if (await DispatchDrawingDirectivesAsync(drawingDirectives, screens, ct).ConfigureAwait(false))
-            {
-                timing.Mark("overlay-drawing-dispatch");
-            }
-        }
-        else if (directives.Count > 0 && (_overlayManager is not null || _overlayFlyTo is not null))
-        {
-            var adjustedDirectives = directives
-                .Select(d => ApplyGeoMapOverrideIfAvailable(transcript, d, screens))
-                .ToArray();
-            if (await DispatchPointDirectivesAsync(adjustedDirectives, screens, ct).ConfigureAwait(false))
-            {
-                timing.Mark("overlay-dispatch");
-            }
-        }
-
+        // Speak first, then point: the voice starts right away while the (optional) zoom
+        // refinement of the pointer runs, so precise pointing doesn't add waiting time.
         var cleaned = result.SpokenText.Trim();
         DebugLog.Write($"[VOICE] answer chars={cleaned.Length}");
         if (!string.IsNullOrWhiteSpace(cleaned))
@@ -896,12 +900,31 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             }
 
             pipeline.Enqueue(cleaned);
-            if (!firstTtsPlaybackSeen)
-            {
-                firstTtsPlaybackSeen = true;
-            }
-
             await _dispatcher.InvokeAsync(() => _viewModel.VoiceState = VoiceState.Responding);
+        }
+
+        if (gamerModeEnabled && drawingDirectives.Count > 0 && _overlayManager is not null)
+        {
+            if (await DispatchDrawingDirectivesAsync(drawingDirectives, screens, ct).ConfigureAwait(false))
+            {
+                timing.Mark("overlay-drawing-dispatch");
+            }
+        }
+        else if (directives.Count > 0 && (_overlayManager is not null || _overlayFlyTo is not null))
+        {
+            IReadOnlyList<PointDirective> finalDirectives = directives
+                .Select(d => ApplyGeoMapOverrideIfAvailable(transcript, d, screens))
+                .ToArray();
+            if (_precisePointingEnabled)
+            {
+                finalDirectives = await RefinePointDirectivesAsync(finalDirectives, screens, transcript, ct).ConfigureAwait(false);
+                timing.Mark("point-refined", $"points={finalDirectives.Count}");
+            }
+            if (ct.IsCancellationRequested) return;
+            if (await DispatchPointDirectivesAsync(finalDirectives, screens, ct).ConfigureAwait(false))
+            {
+                timing.Mark("overlay-dispatch");
+            }
         }
 
         pipeline.Complete();
@@ -913,6 +936,149 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             await _dispatcher.InvokeAsync(() => _viewModel.VoiceState = VoiceState.Idle);
         }
     }
+
+    /// <summary>JSON schema for the zoom-refinement answer.</summary>
+    private const string PointRefinementResponseSchema = """
+        {
+          "type": "object",
+          "properties": {
+            "found": { "type": "boolean" },
+            "x": { "type": "integer" },
+            "y": { "type": "integer" }
+          },
+          "required": ["found", "x", "y"],
+          "additionalProperties": false
+        }
+        """;
+
+    private const string PointRefinementSystemPrompt = """
+        du verfeinerst die position eines zeigers auf dem bildschirm. du bekommst einen vergrößerten bildausschnitt rund um die grob geschätzte stelle.
+        antworte nur mit json nach schema. x und y sind pixelkoordinaten im ausschnitt (ursprung oben links, bildgröße steht im label).
+        zeig auf die mitte des gesuchten elements: bei buttons und symbolen die mitte des symbols, bei text den anfang der gemeinten textstelle.
+        wenn das gesuchte ziel im ausschnitt nicht zu sehen ist, setz found auf false.
+        """;
+
+    /// <summary>Crop around the rough point (screenshot pixels) and how much it is enlarged.</summary>
+    private const int RefinementCropWidth = 600;
+    private const int RefinementCropHeight = 400;
+    private const double RefinementZoom = 2.0;
+    private static readonly TimeSpan RefinementTimeout = TimeSpan.FromSeconds(6);
+
+    /// <summary>
+    /// "Zoom in" step recommended by the vision docs for small targets: for each rough point,
+    /// send an enlarged crop around it and let Claude place the point precisely. Runs in
+    /// parallel; any failure keeps the rough point.
+    /// </summary>
+    private async Task<IReadOnlyList<PointDirective>> RefinePointDirectivesAsync(
+        IReadOnlyList<PointDirective> directives,
+        IReadOnlyList<CapturedScreen> screens,
+        string transcript,
+        CancellationToken ct)
+    {
+        var refined = await Task.WhenAll(directives.Select(d => RefinePointDirectiveAsync(d, screens, transcript, ct))).ConfigureAwait(false);
+        return refined;
+    }
+
+    private async Task<PointDirective> RefinePointDirectiveAsync(
+        PointDirective directive,
+        IReadOnlyList<CapturedScreen> screens,
+        string transcript,
+        CancellationToken ct)
+    {
+        var screen = SelectDirectiveScreen(directive, screens);
+        if (screen is null) return directive;
+
+        try
+        {
+            var cropWidth = Math.Min(RefinementCropWidth, screen.ScreenshotPixelWidth);
+            var cropHeight = Math.Min(RefinementCropHeight, screen.ScreenshotPixelHeight);
+            var cropLeft = Math.Clamp(directive.X - cropWidth / 2, 0, screen.ScreenshotPixelWidth - cropWidth);
+            var cropTop = Math.Clamp(directive.Y - cropHeight / 2, 0, screen.ScreenshotPixelHeight - cropHeight);
+            var cropRectangle = new Rectangle(cropLeft, cropTop, cropWidth, cropHeight);
+
+            var zoomedBytes = await Task.Run(() => ScreenCapture.CropAndScale(screen, cropRectangle, RefinementZoom), ct).ConfigureAwait(false);
+            var zoomedWidth = (int)Math.Round(cropWidth * RefinementZoom);
+            var zoomedHeight = (int)Math.Round(cropHeight * RefinementZoom);
+            var zoomedScreen = new CapturedScreen
+            {
+                ImageBytes = zoomedBytes,
+                Label = $"vergrößerter ausschnitt (image dimensions: {zoomedWidth}x{zoomedHeight} pixels)",
+                IsCursorScreen = false,
+                DisplayBounds = screen.DisplayBounds,
+                ScreenshotPixelWidth = zoomedWidth,
+                ScreenshotPixelHeight = zoomedHeight,
+            };
+
+            var question = $"der nutzer fragte: \"{transcript}\". gesucht ist: \"{directive.Label}\". wo genau ist das im ausschnitt?";
+
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(RefinementTimeout);
+            var answer = new StringBuilder();
+            await foreach (var delta in _llmClient.SendAsync(
+                Array.Empty<Message>(),
+                new[] { zoomedScreen },
+                PointRefinementSystemPrompt,
+                question,
+                PointRefinementResponseSchema,
+                timeoutCts.Token).ConfigureAwait(false))
+            {
+                answer.Append(delta);
+            }
+
+            if (!TryParseRefinement(answer.ToString(), zoomedWidth, zoomedHeight, out var zoomedX, out var zoomedY))
+            {
+                DebugLog.Write($"[POINT] refine: kept rough point for \"{directive.Label}\" (not found in crop)");
+                return directive;
+            }
+
+            var refinedDirective = directive with
+            {
+                X = cropLeft + (int)Math.Round(zoomedX / RefinementZoom),
+                Y = cropTop + (int)Math.Round(zoomedY / RefinementZoom),
+            };
+            DebugLog.Write($"[POINT] refine: \"{directive.Label}\" ({directive.X},{directive.Y}) -> ({refinedDirective.X},{refinedDirective.Y})");
+            return refinedDirective;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            DebugLog.Write($"[POINT] refine failed for \"{directive.Label}\": {ex.GetType().Name}: {ex.Message}");
+            return directive;
+        }
+    }
+
+    internal static bool TryParseRefinement(string json, int width, int height, out int x, out int y)
+    {
+        x = y = 0;
+        try
+        {
+            var start = json.IndexOf('{');
+            var end = json.LastIndexOf('}');
+            if (start < 0 || end <= start) return false;
+            using var doc = System.Text.Json.JsonDocument.Parse(json[start..(end + 1)]);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("found", out var found) || found.ValueKind != System.Text.Json.JsonValueKind.True)
+                return false;
+            if (!root.TryGetProperty("x", out var xProp) || !xProp.TryGetInt32(out x)) return false;
+            if (!root.TryGetProperty("y", out var yProp) || !yProp.TryGetInt32(out y)) return false;
+            return x >= 0 && y >= 0 && x < width && y < height;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Screens with "(image dimensions: WxH pixels)" appended, so Claude knows the coordinate space.</summary>
+    private static List<CapturedScreen> WithDimensionLabels(IReadOnlyList<CapturedScreen> screens) =>
+        screens.Select(s => new CapturedScreen
+        {
+            ImageBytes = s.ImageBytes,
+            Label = $"{s.Label} (image dimensions: {s.ScreenshotPixelWidth}x{s.ScreenshotPixelHeight} pixels)",
+            IsCursorScreen = s.IsCursorScreen,
+            DisplayBounds = s.DisplayBounds,
+            ScreenshotPixelWidth = s.ScreenshotPixelWidth,
+            ScreenshotPixelHeight = s.ScreenshotPixelHeight,
+        }).ToList();
 
     /// <summary>Shows the answer as text next to the mouse (readable even without sound).</summary>
     private async Task ShowAnswerBubbleAsync(string answer)

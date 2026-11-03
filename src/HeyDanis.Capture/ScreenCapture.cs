@@ -17,15 +17,14 @@ namespace HeyDanis.Capture;
 /// </summary>
 public static class ScreenCapture
 {
-    // Claude downsizes anything with a longer edge above ~1568 px before looking at it,
-    // so sending bigger screenshots only costs upload time without adding detail.
-    private const int MaxDimension = 1568;
+    // Screenshot size follows Claude's exact resizing rule (see ClaudeImageSizing), so the
+    // coordinates Claude returns line up with our screenshot without any rescaling.
     private const long JpegQuality = 75;
 
     /// <summary>
     /// Captures every connected display as a JPEG image.
     /// The cursor screen is always sorted first.
-    /// Images are resized so the longer edge is <see cref="MaxDimension"/> pixels.
+    /// Images are resized exactly the way Claude would resize them (<see cref="ClaudeImageSizing"/>).
     /// </summary>
     /// <param name="excludeHwnds">
     /// Window handles to exclude from capture (overlay/tray windows).
@@ -350,7 +349,7 @@ public static class ScreenCapture
             if (drawGrid)
                 DrawCoordinateGrid(fullBitmap);
 
-            // Resize to max 1280px on longer edge
+            // Resize to the size Claude processes (see ClaudeImageSizing)
             var (scaledW, scaledH) = CalculateScaledSize(bounds.Width, bounds.Height);
             using var resized = new Bitmap(scaledW, scaledH, PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(resized))
@@ -455,17 +454,61 @@ public static class ScreenCapture
         }
     }
 
-    private static (int width, int height) CalculateScaledSize(int nativeW, int nativeH)
+    private static (int width, int height) CalculateScaledSize(int nativeW, int nativeH) =>
+        ClaudeImageSizing.ResizedSize(nativeW, nativeH, ClaudeImageSizing.CurrentTier);
+
+    /// <summary>
+    /// Re-encodes an already captured screenshot to fit <paramref name="tier"/> (used when the
+    /// API reports that it would downsize our images). The returned screen carries the new
+    /// pixel size, so pointing coordinates are mapped correctly.
+    /// </summary>
+    public static CapturedScreen ResizeToTier(CapturedScreen screen, ImageTier tier)
     {
-        if (nativeW <= MaxDimension && nativeH <= MaxDimension)
-            return (nativeW, nativeH);
+        var (width, height) = ClaudeImageSizing.ResizedSize(screen.ScreenshotPixelWidth, screen.ScreenshotPixelHeight, tier);
+        if (width == screen.ScreenshotPixelWidth && height == screen.ScreenshotPixelHeight)
+            return screen;
 
-        double aspect = (double)nativeW / nativeH;
+        using var input = new MemoryStream(screen.ImageBytes);
+        using var original = new Bitmap(input);
+        using var resized = new Bitmap(width, height);
+        using (var graphics = Graphics.FromImage(resized))
+        {
+            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            graphics.DrawImage(original, 0, 0, width, height);
+        }
 
-        if (nativeW >= nativeH)
-            return (MaxDimension, (int)Math.Round(MaxDimension / aspect));
-        else
-            return ((int)Math.Round(MaxDimension * aspect), MaxDimension);
+        return new CapturedScreen
+        {
+            ImageBytes = EncodeJpeg(resized, JpegQuality),
+            Label = screen.Label,
+            IsCursorScreen = screen.IsCursorScreen,
+            DisplayBounds = screen.DisplayBounds,
+            ScreenshotPixelWidth = width,
+            ScreenshotPixelHeight = height,
+        };
+    }
+
+    /// <summary>
+    /// Cuts <paramref name="cropInScreenshotPixels"/> out of a screenshot and enlarges it by
+    /// <paramref name="scale"/> — the "zoom" step that lets Claude refine a rough point.
+    /// </summary>
+    public static byte[] CropAndScale(CapturedScreen screen, Rectangle cropInScreenshotPixels, double scale)
+    {
+        using var input = new MemoryStream(screen.ImageBytes);
+        using var original = new Bitmap(input);
+        var width = Math.Max(1, (int)Math.Round(cropInScreenshotPixels.Width * scale));
+        var height = Math.Max(1, (int)Math.Round(cropInScreenshotPixels.Height * scale));
+        using var zoomed = new Bitmap(width, height);
+        using (var graphics = Graphics.FromImage(zoomed))
+        {
+            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            graphics.DrawImage(
+                original,
+                new Rectangle(0, 0, width, height),
+                cropInScreenshotPixels,
+                GraphicsUnit.Pixel);
+        }
+        return EncodeJpeg(zoomed, 85);
     }
 
     /// <summary>

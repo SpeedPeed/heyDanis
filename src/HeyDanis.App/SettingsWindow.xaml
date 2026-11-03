@@ -556,6 +556,34 @@
             <!-- Separator -->
             <Border Height="0.5" Background="{StaticResource BorderSubtle}" Margin="0,0,0,16" />
 
+            <!-- Precise pointing -->
+            <TextBlock Text="ZEIGEN"
+                       FontSize="10" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextTertiary}"
+                       Margin="0,0,0,12" />
+            <Grid Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                    <TextBlock Text="Genauer zeigen (Zoom)"
+                               FontSize="13" FontWeight="Medium"
+                               Foreground="{StaticResource TextSecondary}" />
+                    <TextBlock Text="Schaut sich die Stelle nochmal vergrößert an, bevor der Cursor hinfliegt. Viel genauer, kostet ca. 0,02 Cent pro Zeigen."
+                               FontSize="11"
+                               Foreground="{StaticResource TextTertiary}"
+                               TextWrapping="Wrap"
+                               Margin="0,2,0,0" />
+                </StackPanel>
+                <CheckBox Grid.Column="1"
+                          VerticalAlignment="Center"
+                          IsChecked="{Binding PrecisePointingEnabled, Mode=TwoWay}" />
+            </Grid>
+
+            <!-- Separator -->
+            <Border Height="0.5" Background="{StaticResource BorderSubtle}" Margin="0,0,0,16" />
+
             <!-- Gamer mode -->
             <TextBlock Text="GAMER-MODUS"
                        FontSize="10" FontWeight="SemiBold"

@@ -42,7 +42,7 @@ public class UsageCostTrackerTests : IDisposable
 
         Assert.Equal(3.00m, reloaded.CurrentMonthCostUsd);
         Assert.Equal(2, reloaded.CurrentMonthRequestCount);
-        Assert.Equal("3,00 $ (2 Fragen)", reloaded.FormatCurrentMonth());
+        Assert.Equal("3,00 $ (2 Anfragen)", reloaded.FormatCurrentMonth());
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class UsageCostTrackerTests : IDisposable
         now = new DateTime(2026, 12, 1);
 
         Assert.Equal(0m, tracker.CurrentMonthCostUsd);
-        Assert.Equal("0,00 $ (0 Fragen)", tracker.FormatCurrentMonth());
+        Assert.Equal("0,00 $ (0 Anfragen)", tracker.FormatCurrentMonth());
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public class UsageCostTrackerTests : IDisposable
         var tracker = new UsageCostTracker(_tempFile, () => new DateTime(2026, 11, 3));
         tracker.Record(new LlmUsage("claude-haiku-5-5", 5_000, 200, 0, 0));
 
-        Assert.Equal("< 0,01 $ (1 Frage)", tracker.FormatCurrentMonth());
+        Assert.Equal("< 0,01 $ (1 Anfrage)", tracker.FormatCurrentMonth());
     }
 
     [Fact]

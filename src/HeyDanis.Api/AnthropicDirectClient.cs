@@ -5,6 +5,15 @@ using HeyDanis.Capture;
 
 namespace HeyDanis.Api;
 
+/// <summary>
+/// The model would have downsized one of our screenshots (it is on a lower image-resolution
+/// tier than assumed). The caller resizes the screenshots and retries.
+/// </summary>
+public sealed class ImageTooLargeForModelException : Exception
+{
+    public ImageTooLargeForModelException(string message) : base(message) { }
+}
+
 /// <summary>Token usage of one Claude request, used for the monthly cost display.</summary>
 public sealed record LlmUsage(string Model, int InputTokens, int OutputTokens, int CacheReadInputTokens, int CacheCreationInputTokens);
 
@@ -68,33 +77,7 @@ public sealed class AnthropicDirectClient : ILlmClient
         string? responseJsonSchema,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        var messages = new List<object>();
-
-        // Conversation history as alternating user/assistant turns
-        foreach (var turn in history)
-        {
-            messages.Add(new { role = "user", content = turn.UserText });
-            messages.Add(new { role = "assistant", content = turn.AssistantText });
-        }
-
-        // Current turn: interleaved image+label content blocks, then user text
-        var contentBlocks = new List<object>();
-        foreach (var screen in screens)
-        {
-            contentBlocks.Add(new
-            {
-                type = "image",
-                source = new
-                {
-                    type = "base64",
-                    media_type = DetectImageMediaType(screen.ImageBytes),
-                    data = Convert.ToBase64String(screen.ImageBytes)
-                }
-            });
-            contentBlocks.Add(new { type = "text", text = screen.Label });
-        }
-        contentBlocks.Add(new { type = "text", text = userText });
-        messages.Add(new { role = "user", content = contentBlocks });
+        var messages = BuildMessages(history, screens, userText, includeImageTransformations: true);
 
         var response = await SendMessagesRequestAsync(
             BuildRequestBody(_model, systemPrompt, messages, responseJsonSchema: responseJsonSchema), ct).ConfigureAwait(false);
@@ -105,11 +88,17 @@ public sealed class AnthropicDirectClient : ILlmClient
 
             // Safety net: if the API rejects our speed/cost tuning parameters (e.g. a model
             // that doesn't accept disabled thinking), retry once with a plain request.
-            if ((int)response.StatusCode == 400 && MentionsTuningParameter(errorBody))
+            if ((int)response.StatusCode == 400 && MentionsTuningParameter(errorBody)
+                && !errorBody.Contains("would be downsized", StringComparison.OrdinalIgnoreCase))
             {
                 response.Dispose();
                 response = await SendMessagesRequestAsync(
-                    BuildRequestBody(_model, systemPrompt, messages, includeTuning: false), ct).ConfigureAwait(false);
+                    BuildRequestBody(
+                        _model,
+                        systemPrompt,
+                        BuildMessages(history, screens, userText, includeImageTransformations: false),
+                        includeTuning: false),
+                    ct).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                     errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             }
@@ -118,6 +107,8 @@ public sealed class AnthropicDirectClient : ILlmClient
             {
                 var statusCode = (int)response.StatusCode;
                 response.Dispose();
+                if (statusCode == 400 && errorBody.Contains("would be downsized", StringComparison.OrdinalIgnoreCase))
+                    throw new ImageTooLargeForModelException(ExtractApiErrorMessage(errorBody) ?? errorBody);
                 throw new HttpRequestException(
                     $"Claude API error ({statusCode}): {errorBody}");
             }
@@ -201,6 +192,50 @@ public sealed class AnthropicDirectClient : ILlmClient
         return body;
     }
 
+    /// <summary>
+    /// Conversation history as alternating user/assistant turns, then the current turn:
+    /// each screenshot followed by its label, then the user's question.
+    /// </summary>
+    private static List<object> BuildMessages(
+        IReadOnlyList<Message> history,
+        IReadOnlyList<CapturedScreen> screens,
+        string userText,
+        bool includeImageTransformations)
+    {
+        var messages = new List<object>();
+        foreach (var turn in history)
+        {
+            messages.Add(new { role = "user", content = turn.UserText });
+            messages.Add(new { role = "assistant", content = turn.AssistantText });
+        }
+
+        var contentBlocks = new List<object>();
+        foreach (var screen in screens)
+        {
+            var imageBlock = new Dictionary<string, object>
+            {
+                ["type"] = "image",
+                ["source"] = new
+                {
+                    type = "base64",
+                    media_type = DetectImageMediaType(screen.ImageBytes),
+                    data = Convert.ToBase64String(screen.ImageBytes)
+                },
+            };
+            if (includeImageTransformations)
+            {
+                // Never let Claude silently downsize a screenshot: its pointing coordinates
+                // would no longer match our image. A 400 tells us to resize instead.
+                imageBlock["transformations"] = new { oversized_image = "error" };
+            }
+            contentBlocks.Add(imageBlock);
+            contentBlocks.Add(new { type = "text", text = screen.Label });
+        }
+        contentBlocks.Add(new { type = "text", text = userText });
+        messages.Add(new { role = "user", content = contentBlocks });
+        return messages;
+    }
+
     private async Task<HttpResponseMessage> SendMessagesRequestAsync(Dictionary<string, object> body, CancellationToken ct)
     {
         var json = JsonSerializer.Serialize(body);
@@ -215,7 +250,8 @@ public sealed class AnthropicDirectClient : ILlmClient
         errorBody.Contains("thinking", StringComparison.OrdinalIgnoreCase)
         || errorBody.Contains("output_config", StringComparison.OrdinalIgnoreCase)
         || errorBody.Contains("effort", StringComparison.OrdinalIgnoreCase)
-        || errorBody.Contains("json_schema", StringComparison.OrdinalIgnoreCase);
+        || errorBody.Contains("json_schema", StringComparison.OrdinalIgnoreCase)
+        || errorBody.Contains("transformations", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Pulls the human-readable <c>error.message</c> out of an Anthropic error body,

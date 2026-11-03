@@ -73,6 +73,16 @@ public class SettingsStore
         set { lock (_lock) { _data.SpeakingRate = value; Save(); } }
     }
 
+    /// <summary>
+    /// Zoom refinement for pointing: one extra small Claude request per point
+    /// (~0.02 cent) for a much more precise pointer.
+    /// </summary>
+    public bool PrecisePointingEnabled
+    {
+        get { lock (_lock) return _data.PrecisePointingEnabled; }
+        set { lock (_lock) { _data.PrecisePointingEnabled = value; Save(); } }
+    }
+
     public bool OnboardingComplete
     {
         get { lock (_lock) return _data.OnboardingComplete; }
@@ -166,6 +176,9 @@ public class SettingsStore
 
         [JsonPropertyName("speakingRate")]
         public double SpeakingRate { get; set; } = 1.05;
+
+        [JsonPropertyName("precisePointingEnabled")]
+        public bool PrecisePointingEnabled { get; set; } = true;
 
         [JsonPropertyName("onboardingComplete")]
         public bool OnboardingComplete { get; set; }

@@ -92,7 +92,7 @@ public sealed class UsageCostTracker
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>E.g. "0,42 $ (318 Fragen)" — dollars, because that's how Anthropic bills.</summary>
+    /// <summary>E.g. "0,42 $ (318 Anfragen)" — dollars, because that's how Anthropic bills.</summary>
     public string FormatCurrentMonth()
     {
         decimal cost;
@@ -108,7 +108,8 @@ public sealed class UsageCostTracker
         var costText = cost < 0.01m && cost > 0
             ? "< 0,01 $"
             : cost.ToString("0.00", german) + " $";
-        var questionsText = requests == 1 ? "1 Frage" : $"{requests} Fragen";
+        // Requests, not questions: precise pointing adds a small extra request per point.
+        var questionsText = requests == 1 ? "1 Anfrage" : $"{requests} Anfragen";
         return $"{costText} ({questionsText})";
     }
 

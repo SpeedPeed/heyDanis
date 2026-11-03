@@ -218,7 +218,8 @@ public partial class App : Application
             prepareForCaptureAsync: HideHeyDanisUiForCaptureAsync,
             llmProvider: _settingsStore.LlmProvider,
             llmModel: _settingsStore.LlmModel,
-            useRedesignedPointingProtocol: UseRedesignedPointingProtocolByDefault);
+            useRedesignedPointingProtocol: UseRedesignedPointingProtocolByDefault,
+            precisePointingEnabled: _settingsStore.PrecisePointingEnabled);
         _companionManager.OpenSettingsRequested += OnPipelineKeyError;
         _companionManager.Start();
     }
