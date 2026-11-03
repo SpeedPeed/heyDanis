@@ -6,10 +6,20 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
 ## Stand
 - Phase 0 + 1 erledigt, Plan vom Nutzer freigegeben (direkt auf `main` arbeiten).
 - **M1 erledigt:** Code importiert, Ballast entfernt, umbenannt, eigenes Icon, CI-Build.
-  Kompiliert auf Linux (`-p:EnableWindowsTargeting=true`); Tests laufen nur in GitHub Actions.
-- Aktuell funktioniert die App noch mit **AssemblyAI + ElevenLabs** (Keys nötig) – lokale
-  Whisper/Piper kommen in M3. Texte der Oberfläche sind noch großteils Englisch (→ M3/M6).
-- Als Nächstes: **M2** (Setup beim Nutzer) und **M3** (Kernschleife lokal + Deutsch).
+- **M2 teilweise:** Exe startet beim Nutzer. Claude-Code-CLI war noch **nicht installiert**
+  (Nutzer kannte nur Desktop-App/Web) → Installationsanleitung gegeben; Rückmeldung zu
+  `claude --version` und `echo %ANTHROPIC_API_KEY%` steht noch aus (wird erst in M5 gebraucht).
+- **M3 gebaut, wartet auf Test durch den Nutzer:**
+  - Lokale Spracherkennung (Whisper Small, `HeyDanis.LocalSpeech`), lokale Stimme (Piper
+    „Thorsten“ via sherpa-onnx), Windows-Stimme als Fallback, solange Piper lädt.
+  - Modelle werden beim Start im Hintergrund nach `%APPDATA%\heyDanis\models` geladen
+    (Fortschritt im Hauptfenster). Nur noch der Anthropic-Key ist Pflicht.
+  - Deutscher, lockerer Buddy-Prompt; Haiku ohne Extended Thinking, Sonnet mit effort low.
+  - Kostenanzeige „Kosten diesen Monat“ (`usage.json`).
+  - AltGr-Schutz + Abbruch bei Strg+Alt+<Taste>.
+  - Build ist jetzt ein App-**Ordner** (nicht Single-File), weil Whisper seine nativen DLLs
+    in `runtimes/` neben der Exe sucht.
+- Als Nächstes: Nutzer testet M3 → danach **M4** (Overlay/Zeigen prüfen, Text-Eingabe, Diktat).
 
 ## Ansprüche (vom Nutzer)
 - OS: Windows
@@ -40,9 +50,13 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
 | Git | direkt auf `main` | Solo-Projekt, vom Nutzer so gewünscht |
 
 ## Bekannte Risiken / zu prüfen
-- **AltGr = Strg+Alt** auf deutscher Tastatur (@ € { } [ ] \ | ~). Push-to-Talk darf nur auf
-  **linke** Strg + **linke** Alt reagieren, muss das künstliche Strg von AltGr ignorieren und
-  abbrechen, sobald eine weitere Taste gedrückt wird.
+- Whisper/Piper laufen bisher nur in Unit-Tests ohne echtes Modell – **echter Test nur beim
+  Nutzer möglich** (Container ist Linux). Bei Problemen: `%APPDATA%\heyDanis\debug.log`.
+- Haiku 5.5 mit `thinking: disabled` + `effort: low` – falls die API das ablehnt (400),
+  in `AnthropicDirectClient.BuildRequestBody` anpassen.
+- Abbruch während AssemblyAI-Verbindungsaufbau kann eine Session offen lassen (nur Cloud-STT).
+- ~~AltGr = Strg+Alt~~ → gelöst in M3: nur linke Alt zählt, AltGr gesperrt, Abbruch bei
+  weiterer Taste (`ShortcutTransition.Cancelled`).
 - Strg+Shift kann bei mehreren Tastaturlayouts den Layout-Wechsel auslösen.
 - Haiku zeigt evtl. ungenauer auf Elemente als Sonnet → testen, ggf. Sonnet nur fürs Zeigen.
 - Ob claude.ai-Connectors (Gmail, Kalender, Notion) in `claude -p` verfügbar sind → in Phase 5 testen.
@@ -51,8 +65,8 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
 
 ## Meilensteine
 - [x] M1 Import + Umbenennung + Aufräumen + CI-Build
-- [ ] M2 Setup beim Nutzer (Key, Mikrofon, Claude Code Login)
-- [ ] M3 Kernschleife: Hotkey → Whisper → Screenshot → Haiku → Piper
+- [ ] M2 Setup beim Nutzer (Key, Mikrofon, Claude Code Login) – CLI-Installation offen
+- [~] M3 Kernschleife: Hotkey → Whisper → Screenshot → Haiku → Piper – gebaut, Test durch Nutzer offen
 - [ ] M4 Overlay/Zeigen Multi-Monitor, Markierungen, Text-Eingabe, Diktat
 - [ ] M5 Agent-Modus (parallel, Status, Benachrichtigung, Bestätigung)
 - [ ] M6 Persönlichkeit, Extras, Autostart, Installer

@@ -24,18 +24,22 @@ Meilensteine. Halte sie nach jedem Meilenstein aktuell.
 | Projekt | Zweck |
 |---|---|
 | `HeyDanis.App` | WPF-Host, `App.xaml.cs` verdrahtet alles; Tray (`TrayIconManager`), Fenster, `SettingsWindow` |
-| `HeyDanis.Companion` | `CompanionManager` (zentrale Zustandsmaschine, System-Prompts), `SettingsStore` (JSON), `SecretsStore` (DPAPI), `TtsPipeline` |
+| `HeyDanis.Companion` | `CompanionManager` (zentrale Zustandsmaschine, deutsche System-Prompts), `SettingsStore` (JSON), `SecretsStore` (DPAPI), `TtsPipeline`, `UsageCostTracker` (Monatskosten) |
 | `HeyDanis.Audio` | Mikrofon (NAudio/WASAPI), `PcmResampler` |
 | `HeyDanis.Capture` | Multi-Monitor-Screenshots |
 | `HeyDanis.Hotkey` | Low-Level-Keyboard-Hook, Push-to-Talk-Erkennung |
 | `HeyDanis.Overlay` | Transparente Overlay-Fenster pro Monitor, `BuddyCursorControl`, Zeichnungen, DPI |
-| `HeyDanis.Api` | `AnthropicDirectClient` (SSE), AssemblyAI-STT, ElevenLabs-TTS (werden in M3 durch lokale Whisper/Piper ersetzt bzw. optional) |
+| `HeyDanis.Api` | `AnthropicDirectClient` (SSE, meldet Token-Usage), `ISpeechTranscriber`/`ITextToSpeechClient`, optionale Cloud-Clients AssemblyAI + ElevenLabs |
+| `HeyDanis.LocalSpeech` | `WhisperLocalTranscriber` (Whisper.net), `PiperLocalSpeechClient` (sherpa-onnx), `WindowsVoiceSpeechClient`, `FallbackSpeechClient`, `LocalModelStore` (Downloads nach `%APPDATA%\heyDanis\models`) |
 | `HeyDanis.Pointing` | `PointTagParser`, strukturierte Pointing-Antworten |
 
 - LLM: Standard `claude-haiku-5-5`, optional `claude-sonnet-5-5`. Key des Nutzers, direkt an api.anthropic.com.
 - Agent-Modus (geplant): Claude Code CLI (`claude -p`) mit dem Abo-Login des Nutzers.
   `ANTHROPIC_API_KEY` **muss** aus der Umgebung des Kindprozesses entfernt werden.
-- Daten liegen unter `%APPDATA%\heyDanis` (settings.json, secrets.bin, debug.log).
+- Standard-Sprachkette: Whisper Small lokal → Claude Haiku 5.5 → Piper „Thorsten“ lokal.
+- Hotkey: nur **linke** Alt zählt (AltGr = Strg+Alt auf deutscher Tastatur!), weitere Taste
+  während des Akkords → `ShortcutTransition.Cancelled`.
+- Daten liegen unter `%APPDATA%\heyDanis` (settings.json, secrets.bin, usage.json, debug.log, models/).
 
 ## Build
 
@@ -48,13 +52,14 @@ dotnet build HeyDanis.sln -p:EnableWindowsTargeting=true -c Release
 ```
 
 Tests laufen in GitHub Actions (`.github/workflows/build.yml`, windows-latest). Dort
-wird auch die Single-File-`heyDanis.exe` als Artefakt gebaut.
+wird auch der App-Ordner mit `heyDanis.exe` als Artefakt gebaut (bewusst **kein**
+Single-File: Whisper.net sucht seine nativen DLLs in `runtimes/` neben der Exe).
 
 ## Konventionen
 
 - Sprechende, ausführliche Namen; Klarheit vor Kürze.
 - Kommentare erklären das *Warum*.
-- Nutzer-sichtbare Texte auf Deutsch.
+- Nutzer-sichtbare Texte auf Deutsch. WPF-Projekte haben kein implizites `using System.IO;`.
 - Default-Tests deterministisch halten (Fakes für LLM/Capture/Overlay), nichts, was einen
   echten Desktop braucht.
 - Keine Keys, Modelle (`*.onnx`, `*.bin`) oder Build-Ausgaben committen.
