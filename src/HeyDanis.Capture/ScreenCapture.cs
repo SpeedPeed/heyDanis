@@ -17,7 +17,9 @@ namespace HeyDanis.Capture;
 /// </summary>
 public static class ScreenCapture
 {
-    private const int MaxDimension = 3840;
+    // Claude downsizes anything with a longer edge above ~1568 px before looking at it,
+    // so sending bigger screenshots only costs upload time without adding detail.
+    private const int MaxDimension = 1568;
     private const long JpegQuality = 75;
 
     /// <summary>

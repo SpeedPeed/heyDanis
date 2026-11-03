@@ -62,13 +62,13 @@ public class CompanionManagerTests
     [Fact]
     public void SystemPrompt_ContainsKeyPhrases()
     {
-        // Verify the system prompt matches Mac's essential content
+        // The buddy speaks German, casual and short, and can point at things.
         var prompt = CompanionManager.CompanionSystemPrompt;
         Assert.Contains("heydanis", prompt);
-        Assert.Contains("push-to-talk", prompt);
-        Assert.Contains("text-to-speech", prompt);
+        Assert.Contains("deutsch", prompt);
+        Assert.Contains("locker und kurz", prompt);
+        Assert.Contains("vorgelesen", prompt);
         Assert.Contains("[POINT:", prompt);
-        Assert.Contains("element pointing", prompt);
     }
 
     [Fact]
@@ -78,6 +78,16 @@ public class CompanionManagerTests
         Assert.Contains("[POINT:x,y:label]", prompt);
         Assert.Contains("[POINT:none]", prompt);
         Assert.Contains(":screenN", prompt);
+    }
+
+    [Fact]
+    public void StructuredPrompt_SharesPersonalityAndKeepsJsonSchemaKeys()
+    {
+        var prompt = CompanionManager.StructuredPointingSystemPrompt;
+        Assert.Contains("htl-schüler", prompt);
+        Assert.Contains("\"spokenText\"", prompt);
+        Assert.Contains("\"pointIntents\"", prompt);
+        Assert.Contains("schritt-für-schritt", prompt);
     }
 
     [Fact]
