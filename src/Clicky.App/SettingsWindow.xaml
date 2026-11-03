@@ -162,20 +162,6 @@
                        Foreground="{StaticResource TextPrimary}"
                        Margin="0,0,0,20" />
 
-            <!-- LLM Provider -->
-            <TextBlock Text="LLM SERVICE"
-                       FontSize="10" FontWeight="SemiBold"
-                       Foreground="{StaticResource TextTertiary}"
-                       Margin="0,0,0,6" />
-
-            <ComboBox x:Name="ProviderCombo"
-                      Style="{StaticResource DarkComboBox}"
-                      ItemsSource="{Binding Providers}"
-                      DisplayMemberPath="Display"
-                      SelectedValuePath="Value"
-                      SelectedValue="{Binding SelectedProvider, Mode=TwoWay}"
-                      Margin="0,0,0,12" />
-
             <!-- LLM Model -->
             <TextBlock Text="MODEL"
                        FontSize="10" FontWeight="SemiBold"
@@ -194,13 +180,13 @@
             <Border Height="0.5" Background="{StaticResource BorderSubtle}" Margin="0,0,0,20" />
 
             <!-- API KEYS header -->
-            <TextBlock Text="AUDIO API KEYS"
+            <TextBlock Text="API KEYS"
                        FontSize="10" FontWeight="SemiBold"
                        Foreground="{StaticResource TextTertiary}"
                        Margin="0,0,0,12" />
 
             <!-- Anthropic API Key -->
-            <Grid Margin="0,0,0,4" Visibility="Collapsed">
+            <Grid Margin="0,0,0,4">
                 <TextBlock Text="Anthropic"
                            FontSize="13" FontWeight="Medium"
                            Foreground="{StaticResource TextSecondary}"
@@ -210,7 +196,7 @@
                         HorizontalAlignment="Right"
                         Click="AnthropicLink_Click" />
             </Grid>
-            <Grid Margin="0,0,0,12" Visibility="Collapsed">
+            <Grid Margin="0,0,0,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -247,106 +233,7 @@
             <!-- Anthropic key error -->
             <TextBlock Text="{Binding AnthropicKeyError}"
                        FontSize="11" Foreground="{StaticResource Failure}"
-                       Margin="0,0,0,4"
-                       Visibility="Collapsed" />
-
-            <!-- OpenAI API Key -->
-            <Grid Margin="0,0,0,4" Visibility="Collapsed">
-                <TextBlock Text="OpenAI"
-                           FontSize="13" FontWeight="Medium"
-                           Foreground="{StaticResource TextSecondary}"
-                           VerticalAlignment="Center" />
-                <Button Content="Get key &#x2192;"
-                        Style="{StaticResource LinkButton}"
-                        HorizontalAlignment="Right"
-                        Click="OpenAiLink_Click" />
-            </Grid>
-            <Grid Margin="0,0,0,12" Visibility="Collapsed">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <PasswordBox x:Name="OpenAiKeyBox"
-                             Grid.Column="0"
-                             Style="{StaticResource DarkPasswordBox}"
-                             PasswordChanged="OpenAiKeyBox_PasswordChanged"
-                             Margin="0,0,8,0" />
-                <TextBox x:Name="OpenAiSavedPlaceholder"
-                         Grid.Column="0"
-                         Style="{StaticResource DarkTextBox}"
-                         Text="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
-                         IsReadOnly="True"
-                         Margin="0,0,8,0"
-                         Visibility="Collapsed" />
-                <Button x:Name="OpenAiChangeBtn"
-                        Grid.Column="1"
-                        Content="Change"
-                        Style="{StaticResource TestButton}"
-                        Click="OpenAiChange_Click"
-                        Visibility="Collapsed"
-                        Margin="0,0,8,0" />
-                <Button x:Name="OpenAiTestBtn"
-                        Grid.Column="2"
-                        Content="Test"
-                        Style="{StaticResource TestButton}"
-                        Click="OpenAiTest_Click" />
-            </Grid>
-
-            <!-- OpenAI key error -->
-            <TextBlock Text="{Binding OpenAiKeyError}"
-                       FontSize="11" Foreground="{StaticResource Failure}"
-                       Margin="0,0,0,4"
-                       Visibility="Collapsed" />
-
-            <!-- z.ai API Key -->
-            <Grid Margin="0,0,0,4" Visibility="Collapsed">
-                <TextBlock Text="z.ai"
-                           FontSize="13" FontWeight="Medium"
-                           Foreground="{StaticResource TextSecondary}"
-                           VerticalAlignment="Center" />
-                <Button Content="Get key &#x2192;"
-                        Style="{StaticResource LinkButton}"
-                        HorizontalAlignment="Right"
-                        Click="ZaiLink_Click" />
-            </Grid>
-            <Grid Margin="0,0,0,12" Visibility="Collapsed">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <PasswordBox x:Name="ZaiKeyBox"
-                             Grid.Column="0"
-                             Style="{StaticResource DarkPasswordBox}"
-                             PasswordChanged="ZaiKeyBox_PasswordChanged"
-                             Margin="0,0,8,0" />
-                <TextBox x:Name="ZaiSavedPlaceholder"
-                         Grid.Column="0"
-                         Style="{StaticResource DarkTextBox}"
-                         Text="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
-                         IsReadOnly="True"
-                         Margin="0,0,8,0"
-                         Visibility="Collapsed" />
-                <Button x:Name="ZaiChangeBtn"
-                        Grid.Column="1"
-                        Content="Change"
-                        Style="{StaticResource TestButton}"
-                        Click="ZaiChange_Click"
-                        Visibility="Collapsed"
-                        Margin="0,0,8,0" />
-                <Button x:Name="ZaiTestBtn"
-                        Grid.Column="2"
-                        Content="Test"
-                        Style="{StaticResource TestButton}"
-                        Click="ZaiTest_Click" />
-            </Grid>
-
-            <!-- z.ai key error -->
-            <TextBlock Text="{Binding ZaiKeyError}"
-                       FontSize="11" Foreground="{StaticResource Failure}"
-                       Margin="0,0,0,4"
-                       Visibility="Collapsed" />
+                       Margin="0,0,0,4" />
 
             <!-- AssemblyAI API Key -->
             <Grid Margin="0,0,0,4">

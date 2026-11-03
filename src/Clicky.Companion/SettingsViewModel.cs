@@ -22,12 +22,10 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private readonly SettingsStore _settingsStore;
     private readonly HttpClient _httpClient;
 
-    private string _selectedProvider = "codex";
-    private string _selectedModel = "gpt-5.5";
+    private string _selectedProvider = "anthropic";
+    private string _selectedModel = DefaultModel;
 
     private string _anthropicApiKey = "";
-    private string _openAiApiKey = "";
-    private string _zaiApiKey = "";
     private string _assemblyAiApiKey = "";
     private string _elevenLabsApiKey = "";
     // Keep in sync with SettingsStore.SettingsData.ElevenLabsVoiceId — Adam,
@@ -40,27 +38,19 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     // True when the field shows the saved placeholder instead of the real key.
     private bool _anthropicKeyIsSaved;
-    private bool _openAiKeyIsSaved;
-    private bool _zaiKeyIsSaved;
     private bool _assemblyAiKeyIsSaved;
     private bool _elevenLabsKeyIsSaved;
 
     private TestState _anthropicTestState = TestState.None;
-    private TestState _openAiTestState = TestState.None;
-    private TestState _zaiTestState = TestState.None;
     private TestState _assemblyAiTestState = TestState.None;
     private TestState _elevenLabsTestState = TestState.None;
 
     private string? _anthropicTestError;
-    private string? _openAiTestError;
-    private string? _zaiTestError;
     private string? _assemblyAiTestError;
     private string? _elevenLabsTestError;
 
     // Inline validation errors shown when a required key is missing (first-run / partial config).
     private string? _anthropicKeyError;
-    private string? _openAiKeyError;
-    private string? _zaiKeyError;
     private string? _assemblyAiKeyError;
     private string? _elevenLabsKeyError;
 
@@ -143,9 +133,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     // -- Provider / Model --
 
+    /// <summary>Günstigstes Claude-Modell mit Bildverständnis – Standard für alle Fragen.</summary>
+    public const string DefaultModel = "claude-haiku-5-5";
+
     public static IReadOnlyList<ProviderChoice> Providers { get; } = new[]
     {
-        new ProviderChoice("codex", "OpenAI Codex OAuth"),
+        new ProviderChoice("anthropic", "Anthropic Claude"),
     };
 
     public string SelectedProvider
@@ -165,11 +158,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         }
     }
 
-    public IReadOnlyList<ModelChoice> AvailableModels => _selectedProvider switch
-    {
-        "codex" => CodexModels,
-        _ => AnthropicModels,
-    };
+    public IReadOnlyList<ModelChoice> AvailableModels => AnthropicModels;
 
     public string SelectedModel
     {
@@ -182,31 +171,10 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         }
     }
 
-    public static IReadOnlyList<ModelChoice> CodexModels { get; } = new[]
-    {
-        new ModelChoice("gpt-5.5", "GPT-5.5 (Codex OAuth)"),
-        new ModelChoice("gpt-5.4", "GPT-5.4 (Codex OAuth)"),
-        new ModelChoice("gpt-5.4-mini", "GPT-5.4 Mini (Codex OAuth)"),
-        new ModelChoice("gpt-5.3-codex", "GPT-5.3 Codex"),
-        new ModelChoice("gpt-5.3-codex-spark", "GPT-5.3 Codex Spark"),
-    };
-
     public static IReadOnlyList<ModelChoice> AnthropicModels { get; } = new[]
     {
-        new ModelChoice("claude-sonnet-4-6", "Claude Sonnet 4.6"),
-        new ModelChoice("claude-haiku-4-5", "Claude Haiku 4.5"),
-        new ModelChoice("claude-opus-4-6", "Claude Opus 4.6"),
-    };
-
-    public static IReadOnlyList<ModelChoice> OpenAiModels { get; } = new[]
-    {
-        new ModelChoice("gpt-5.2", "GPT-5.2"),
-    };
-
-    public static IReadOnlyList<ModelChoice> ZaiModels { get; } = new[]
-    {
-        new ModelChoice("glm-4.6v", "GLM-4.6V"),
-        new ModelChoice("glm-4.5v", "GLM-4.5V"),
+        new ModelChoice("claude-haiku-5-5", "Claude Haiku 5.5 (günstig, Standard)"),
+        new ModelChoice("claude-sonnet-5-5", "Claude Sonnet 5.5 (genauer, ca. 20x teurer)"),
     };
 
     // -- API Keys --
@@ -235,53 +203,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         private set { _anthropicKeyIsSaved = value; OnPropertyChanged(); }
     }
 
-    public string OpenAiApiKey
-    {
-        get => _openAiApiKey;
-        set
-        {
-            if (_openAiApiKey == value) return;
-            _openAiApiKey = value;
-            _openAiKeyIsSaved = false;
-            _openAiTestState = TestState.None;
-            _openAiKeyError = null;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(OpenAiKeyIsSaved));
-            OnPropertyChanged(nameof(OpenAiTestState));
-            OnPropertyChanged(nameof(OpenAiKeyError));
-            OnPropertyChanged(nameof(CanSave));
-        }
-    }
 
-    public bool OpenAiKeyIsSaved
-    {
-        get => _openAiKeyIsSaved;
-        private set { _openAiKeyIsSaved = value; OnPropertyChanged(); }
-    }
 
-    public string ZaiApiKey
-    {
-        get => _zaiApiKey;
-        set
-        {
-            if (_zaiApiKey == value) return;
-            _zaiApiKey = value;
-            _zaiKeyIsSaved = false;
-            _zaiTestState = TestState.None;
-            _zaiKeyError = null;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(ZaiKeyIsSaved));
-            OnPropertyChanged(nameof(ZaiTestState));
-            OnPropertyChanged(nameof(ZaiKeyError));
-            OnPropertyChanged(nameof(CanSave));
-        }
-    }
 
-    public bool ZaiKeyIsSaved
-    {
-        get => _zaiKeyIsSaved;
-        private set { _zaiKeyIsSaved = value; OnPropertyChanged(); }
-    }
 
     public string AssemblyAiApiKey
     {
@@ -356,29 +280,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         private set { _anthropicTestError = value; OnPropertyChanged(); }
     }
 
-    public TestState OpenAiTestState
-    {
-        get => _openAiTestState;
-        private set { _openAiTestState = value; OnPropertyChanged(); OnPropertyChanged(nameof(OpenAiTestError)); }
-    }
 
-    public string? OpenAiTestError
-    {
-        get => _openAiTestError;
-        private set { _openAiTestError = value; OnPropertyChanged(); }
-    }
 
-    public TestState ZaiTestState
-    {
-        get => _zaiTestState;
-        private set { _zaiTestState = value; OnPropertyChanged(); OnPropertyChanged(nameof(ZaiTestError)); }
-    }
 
-    public string? ZaiTestError
-    {
-        get => _zaiTestError;
-        private set { _zaiTestError = value; OnPropertyChanged(); }
-    }
 
     public TestState AssemblyAiTestState
     {
@@ -412,17 +316,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         private set { _anthropicKeyError = value; OnPropertyChanged(); }
     }
 
-    public string? OpenAiKeyError
-    {
-        get => _openAiKeyError;
-        private set { _openAiKeyError = value; OnPropertyChanged(); }
-    }
 
-    public string? ZaiKeyError
-    {
-        get => _zaiKeyError;
-        private set { _zaiKeyError = value; OnPropertyChanged(); }
-    }
 
     public string? AssemblyAiKeyError
     {
@@ -442,26 +336,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     /// </summary>
     public void ValidateRequiredFields()
     {
-        if (_selectedProvider == "codex")
-            AnthropicKeyError = null;
-        else if (_selectedProvider == "anthropic" && !HasKey(_anthropicApiKey, _anthropicKeyIsSaved))
-            AnthropicKeyError = "Required for your selected service";
+        if (!HasKey(_anthropicApiKey, _anthropicKeyIsSaved))
+            AnthropicKeyError = "Pflichtfeld";
         else
             AnthropicKeyError = null;
 
-        if (_selectedProvider == "codex")
-            OpenAiKeyError = null;
-        else if (_selectedProvider == "openai" && !HasKey(_openAiApiKey, _openAiKeyIsSaved))
-            OpenAiKeyError = "Required for your selected service";
-        else
-            OpenAiKeyError = null;
 
-        if (_selectedProvider == "codex")
-            ZaiKeyError = null;
-        else if (_selectedProvider == "zai" && !HasKey(_zaiApiKey, _zaiKeyIsSaved))
-            ZaiKeyError = "Required for your selected service";
-        else
-            ZaiKeyError = null;
 
         if (!HasKey(_assemblyAiApiKey, _assemblyAiKeyIsSaved))
             AssemblyAiKeyError = "Required";
@@ -484,13 +364,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     {
         get
         {
-            bool hasLlmKey = _selectedProvider switch
-            {
-                "zai" => HasKey(_zaiApiKey, _zaiKeyIsSaved),
-                "openai" => HasKey(_openAiApiKey, _openAiKeyIsSaved),
-                "codex" => true,
-                _ => HasKey(_anthropicApiKey, _anthropicKeyIsSaved),
-            };
+            bool hasLlmKey = HasKey(_anthropicApiKey, _anthropicKeyIsSaved);
 
             bool hasAudioKeys = HasKey(_assemblyAiApiKey, _assemblyAiKeyIsSaved)
                              && HasKey(_elevenLabsApiKey, _elevenLabsKeyIsSaved);
@@ -510,11 +384,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         if (!_anthropicKeyIsSaved && !string.IsNullOrWhiteSpace(_anthropicApiKey))
             _secretsStore.Write(SecretsStore.AnthropicApiKey, _anthropicApiKey);
 
-        if (!_openAiKeyIsSaved && !string.IsNullOrWhiteSpace(_openAiApiKey))
-            _secretsStore.Write(SecretsStore.OpenAiApiKey, _openAiApiKey);
 
-        if (!_zaiKeyIsSaved && !string.IsNullOrWhiteSpace(_zaiApiKey))
-            _secretsStore.Write(SecretsStore.ZaiApiKey, _zaiApiKey);
 
         if (!_assemblyAiKeyIsSaved && !string.IsNullOrWhiteSpace(_assemblyAiApiKey))
             _secretsStore.Write(SecretsStore.AssemblyAiApiKey, _assemblyAiApiKey);
@@ -534,8 +404,6 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     }
 
     public void ClearAnthropicKey() { AnthropicApiKey = ""; AnthropicKeyIsSaved = false; }
-    public void ClearOpenAiKey() { OpenAiApiKey = ""; OpenAiKeyIsSaved = false; }
-    public void ClearZaiKey() { ZaiApiKey = ""; ZaiKeyIsSaved = false; }
     public void ClearAssemblyAiKey() { AssemblyAiApiKey = ""; AssemblyAiKeyIsSaved = false; }
     public void ClearElevenLabsKey() { ElevenLabsApiKey = ""; ElevenLabsKeyIsSaved = false; }
 
@@ -556,105 +424,28 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             request.Headers.Add("x-api-key", key);
             request.Headers.Add("anthropic-version", "2023-06-01");
             request.Content = new StringContent(
-                """{"model":"claude-haiku-4-5","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}""",
+                """{"model":"claude-haiku-5-5","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}""",
                 Encoding.UTF8, "application/json");
 
             using var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
                 AnthropicTestState = TestState.Success;
-                ClickyAnalytics.TrackProviderTestRun("anthropic", success: true);
             }
             else
             {
                 AnthropicTestError = FriendlyError("Anthropic", (int)response.StatusCode);
                 AnthropicTestState = TestState.Failure;
-                ClickyAnalytics.TrackProviderTestRun("anthropic", success: false, ErrorCategory((int)response.StatusCode));
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             AnthropicTestError = FriendlyError("Anthropic", ex);
             AnthropicTestState = TestState.Failure;
-            ClickyAnalytics.TrackProviderTestRun("anthropic", success: false, ErrorCategory(ex));
         }
     }
 
-    public async Task TestZaiAsync(CancellationToken ct = default)
-    {
-        var key = _zaiKeyIsSaved
-            ? _secretsStore.Read(SecretsStore.ZaiApiKey) ?? ""
-            : _zaiApiKey;
 
-        ZaiTestState = TestState.Testing;
-        ZaiTestError = null;
-
-        try
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.z.ai/api/paas/v4/chat/completions");
-            request.Headers.Add("Authorization", $"Bearer {key}");
-            request.Content = new StringContent(
-                """{"model":"glm-4.5v","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}""",
-                Encoding.UTF8, "application/json");
-
-            using var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
-            if (response.IsSuccessStatusCode)
-            {
-                ZaiTestState = TestState.Success;
-                ClickyAnalytics.TrackProviderTestRun("zai", success: true);
-            }
-            else
-            {
-                ZaiTestError = FriendlyError("z.ai", (int)response.StatusCode);
-                ZaiTestState = TestState.Failure;
-                ClickyAnalytics.TrackProviderTestRun("zai", success: false, ErrorCategory((int)response.StatusCode));
-            }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            ZaiTestError = FriendlyError("z.ai", ex);
-            ZaiTestState = TestState.Failure;
-            ClickyAnalytics.TrackProviderTestRun("zai", success: false, ErrorCategory(ex));
-        }
-    }
-
-    public async Task TestOpenAiAsync(CancellationToken ct = default)
-    {
-        var key = _openAiKeyIsSaved
-            ? _secretsStore.Read(SecretsStore.OpenAiApiKey) ?? ""
-            : _openAiApiKey;
-
-        OpenAiTestState = TestState.Testing;
-        OpenAiTestError = null;
-
-        try
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions");
-            request.Headers.Add("Authorization", $"Bearer {key}");
-            request.Content = new StringContent(
-                """{"model":"gpt-5.2","max_completion_tokens":1,"messages":[{"role":"developer","content":"Reply with ok."},{"role":"user","content":"hi"}]}""",
-                Encoding.UTF8, "application/json");
-
-            using var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
-            if (response.IsSuccessStatusCode)
-            {
-                OpenAiTestState = TestState.Success;
-                ClickyAnalytics.TrackProviderTestRun("openai", success: true);
-            }
-            else
-            {
-                OpenAiTestError = FriendlyError("OpenAI", (int)response.StatusCode);
-                OpenAiTestState = TestState.Failure;
-                ClickyAnalytics.TrackProviderTestRun("openai", success: false, ErrorCategory((int)response.StatusCode));
-            }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            OpenAiTestError = FriendlyError("OpenAI", ex);
-            OpenAiTestState = TestState.Failure;
-            ClickyAnalytics.TrackProviderTestRun("openai", success: false, ErrorCategory(ex));
-        }
-    }
 
     public async Task TestAssemblyAiAsync(CancellationToken ct = default)
     {
@@ -675,20 +466,17 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             if (response.IsSuccessStatusCode)
             {
                 AssemblyAiTestState = TestState.Success;
-                ClickyAnalytics.TrackProviderTestRun("assemblyai", success: true);
             }
             else
             {
                 AssemblyAiTestError = FriendlyError("AssemblyAI", (int)response.StatusCode);
                 AssemblyAiTestState = TestState.Failure;
-                ClickyAnalytics.TrackProviderTestRun("assemblyai", success: false, ErrorCategory((int)response.StatusCode));
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             AssemblyAiTestError = FriendlyError("AssemblyAI", ex);
             AssemblyAiTestState = TestState.Failure;
-            ClickyAnalytics.TrackProviderTestRun("assemblyai", success: false, ErrorCategory(ex));
         }
     }
 
@@ -711,20 +499,17 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             if (response.IsSuccessStatusCode)
             {
                 ElevenLabsTestState = TestState.Success;
-                ClickyAnalytics.TrackProviderTestRun("elevenlabs", success: true);
             }
             else
             {
                 ElevenLabsTestError = FriendlyError("ElevenLabs", (int)response.StatusCode);
                 ElevenLabsTestState = TestState.Failure;
-                ClickyAnalytics.TrackProviderTestRun("elevenlabs", success: false, ErrorCategory((int)response.StatusCode));
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             ElevenLabsTestError = FriendlyError("ElevenLabs", ex);
             ElevenLabsTestState = TestState.Failure;
-            ClickyAnalytics.TrackProviderTestRun("elevenlabs", success: false, ErrorCategory(ex));
         }
     }
 
@@ -748,11 +533,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         if (_secretsStore.Exists(SecretsStore.AnthropicApiKey))
             _anthropicKeyIsSaved = true;
 
-        if (_secretsStore.Exists(SecretsStore.OpenAiApiKey))
-            _openAiKeyIsSaved = true;
 
-        if (_secretsStore.Exists(SecretsStore.ZaiApiKey))
-            _zaiKeyIsSaved = true;
 
         if (_secretsStore.Exists(SecretsStore.AssemblyAiApiKey))
             _assemblyAiKeyIsSaved = true;
@@ -761,16 +542,15 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             _elevenLabsKeyIsSaved = true;
     }
 
-    private static string NormalizeProvider(string provider) =>
-        provider == "codex" ? "codex" : "codex";
+    private static string NormalizeProvider(string provider) => "anthropic";
 
-    private static string NormalizeModel(string model)
+    public static string NormalizeModel(string model)
     {
-        foreach (var choice in CodexModels)
+        foreach (var choice in AnthropicModels)
         {
             if (choice.Value == model) return model;
         }
-        return CodexModels[0].Value;
+        return DefaultModel;
     }
 
     private static string ResolveSavedDeviceId(string saved, IReadOnlyList<AudioDevices.DeviceInfo> available)

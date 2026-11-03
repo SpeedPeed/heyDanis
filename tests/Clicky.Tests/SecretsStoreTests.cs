@@ -101,14 +101,10 @@ public class SecretsStoreTests : IDisposable
         var store = new SecretsStore(_tempFile);
 
         store.Write(SecretsStore.AnthropicApiKey, "sk-ant-123");
-        store.Write(SecretsStore.OpenAiApiKey, "openai-234");
-        store.Write(SecretsStore.ZaiApiKey, "zai-456");
         store.Write(SecretsStore.AssemblyAiApiKey, "aai-789");
         store.Write(SecretsStore.ElevenLabsApiKey, "el-abc");
 
         Assert.Equal("sk-ant-123", store.Read(SecretsStore.AnthropicApiKey));
-        Assert.Equal("openai-234", store.Read(SecretsStore.OpenAiApiKey));
-        Assert.Equal("zai-456", store.Read(SecretsStore.ZaiApiKey));
         Assert.Equal("aai-789", store.Read(SecretsStore.AssemblyAiApiKey));
         Assert.Equal("el-abc", store.Read(SecretsStore.ElevenLabsApiKey));
     }

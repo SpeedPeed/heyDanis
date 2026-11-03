@@ -19,7 +19,7 @@ public sealed class AnthropicDirectClient : ILlmClient
     private readonly HttpClient _http;
     private readonly string _model;
 
-    public AnthropicDirectClient(string apiKey, string model = "claude-sonnet-4-6", HttpClient? httpClient = null)
+    public AnthropicDirectClient(string apiKey, string model = "claude-haiku-5-5", HttpClient? httpClient = null)
     {
         _model = model;
 

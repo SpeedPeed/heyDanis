@@ -35,11 +35,10 @@ public class SettingsStoreTests : IDisposable
     {
         var store = new SettingsStore(Path.Combine(_tempDir, "nonexistent", "settings.json"));
 
-        Assert.Equal("codex", store.LlmProvider);
-        Assert.Equal("gpt-5.5", store.LlmModel);
+        Assert.Equal("anthropic", store.LlmProvider);
+        Assert.Equal("claude-haiku-5-5", store.LlmModel);
         Assert.Equal("pNInz6obpgDQGcFmaJgB", store.ElevenLabsVoiceId);
         Assert.False(store.OnboardingComplete);
-        Assert.False(store.AnalyticsOptOut);
         Assert.False(store.GamerModeEnabled);
     }
 
@@ -48,9 +47,9 @@ public class SettingsStoreTests : IDisposable
     {
         var store = new SettingsStore(_tempFile);
 
-        store.LlmProvider = "zai";
+        store.LlmProvider = "anthropic-test";
 
-        Assert.Equal("zai", store.LlmProvider);
+        Assert.Equal("anthropic-test", store.LlmProvider);
     }
 
     [Fact]
@@ -58,9 +57,9 @@ public class SettingsStoreTests : IDisposable
     {
         var store = new SettingsStore(_tempFile);
 
-        store.LlmModel = "glm-4.6v";
+        store.LlmModel = "claude-sonnet-5-5";
 
-        Assert.Equal("glm-4.6v", store.LlmModel);
+        Assert.Equal("claude-sonnet-5-5", store.LlmModel);
     }
 
     [Fact]
@@ -81,16 +80,6 @@ public class SettingsStoreTests : IDisposable
         store.OnboardingComplete = true;
 
         Assert.True(store.OnboardingComplete);
-    }
-
-    [Fact]
-    public void AnalyticsOptOut_RoundTrip()
-    {
-        var store = new SettingsStore(_tempFile);
-
-        store.AnalyticsOptOut = true;
-
-        Assert.True(store.AnalyticsOptOut);
     }
 
     [Fact]
@@ -129,23 +118,21 @@ public class SettingsStoreTests : IDisposable
     public void Persistence_NewInstanceReadsWrittenValues()
     {
         var store1 = new SettingsStore(_tempFile);
-        store1.LlmProvider = "zai";
-        store1.LlmModel = "glm-4.6v";
+        store1.LlmProvider = "anthropic-test";
+        store1.LlmModel = "claude-sonnet-5-5";
         store1.OnboardingComplete = true;
-        store1.AnalyticsOptOut = true;
 
         var store2 = new SettingsStore(_tempFile);
-        Assert.Equal("zai", store2.LlmProvider);
-        Assert.Equal("glm-4.6v", store2.LlmModel);
+        Assert.Equal("anthropic-test", store2.LlmProvider);
+        Assert.Equal("claude-sonnet-5-5", store2.LlmModel);
         Assert.True(store2.OnboardingComplete);
-        Assert.True(store2.AnalyticsOptOut);
     }
 
     [Fact]
     public void File_IsReadableJson()
     {
         var store = new SettingsStore(_tempFile);
-        store.LlmProvider = "zai";
+        store.LlmProvider = "anthropic-test";
 
         var json = File.ReadAllText(_tempFile);
 
@@ -160,8 +147,8 @@ public class SettingsStoreTests : IDisposable
 
         var store = new SettingsStore(_tempFile);
 
-        Assert.Equal("codex", store.LlmProvider);
-        Assert.Equal("gpt-5.5", store.LlmModel);
+        Assert.Equal("anthropic", store.LlmProvider);
+        Assert.Equal("claude-haiku-5-5", store.LlmModel);
         Assert.False(store.OnboardingComplete);
     }
 
@@ -171,12 +158,12 @@ public class SettingsStoreTests : IDisposable
         var nestedPath = Path.Combine(_tempDir, "sub", "dir", "settings.json");
         var store = new SettingsStore(nestedPath);
 
-        store.LlmProvider = "zai";
+        store.LlmProvider = "anthropic-test";
 
         Assert.True(File.Exists(nestedPath));
 
         var store2 = new SettingsStore(nestedPath);
-        Assert.Equal("zai", store2.LlmProvider);
+        Assert.Equal("anthropic-test", store2.LlmProvider);
     }
 
     [Fact]

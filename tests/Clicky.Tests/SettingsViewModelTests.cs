@@ -39,74 +39,6 @@ public class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
-    public void CanSave_TrueWhenLegacyAnthropicProviderAndAudioKeysEntered()
-    {
-        var vm = new SettingsViewModel(_secrets, _settings);
-        vm.SelectedProvider = "anthropic";
-        vm.AssemblyAiApiKey = "aai-test";
-        vm.ElevenLabsApiKey = "el-test";
-
-        Assert.True(vm.CanSave);
-    }
-
-    [Fact]
-    public void CanSave_TrueWhenLegacyAnthropicProviderButMissingAnthropicKey()
-    {
-        var vm = new SettingsViewModel(_secrets, _settings);
-        vm.SelectedProvider = "anthropic";
-        // No anthropic key set.
-        vm.AssemblyAiApiKey = "aai-test";
-        vm.ElevenLabsApiKey = "el-test";
-
-        Assert.True(vm.CanSave);
-    }
-
-    [Fact]
-    public void CanSave_TrueWhenLegacyZaiProviderAndAudioKeysEntered()
-    {
-        var vm = new SettingsViewModel(_secrets, _settings);
-        vm.SelectedProvider = "zai";
-        vm.AssemblyAiApiKey = "aai-test";
-        vm.ElevenLabsApiKey = "el-test";
-
-        Assert.True(vm.CanSave);
-    }
-
-    [Fact]
-    public void CanSave_TrueWhenLegacyZaiProviderButMissingZaiKey()
-    {
-        var vm = new SettingsViewModel(_secrets, _settings);
-        vm.SelectedProvider = "zai";
-        // No zai key.
-        vm.AssemblyAiApiKey = "aai-test";
-        vm.ElevenLabsApiKey = "el-test";
-
-        Assert.True(vm.CanSave);
-    }
-
-    [Fact]
-    public void CanSave_TrueWhenLegacyOpenAiProviderAndAudioKeysEntered()
-    {
-        var vm = new SettingsViewModel(_secrets, _settings);
-        vm.SelectedProvider = "openai";
-        vm.AssemblyAiApiKey = "aai-test";
-        vm.ElevenLabsApiKey = "el-test";
-
-        Assert.True(vm.CanSave);
-    }
-
-    [Fact]
-    public void CanSave_TrueWhenLegacyOpenAiProviderButMissingOpenAiKey()
-    {
-        var vm = new SettingsViewModel(_secrets, _settings);
-        vm.SelectedProvider = "openai";
-        vm.AssemblyAiApiKey = "aai-test";
-        vm.ElevenLabsApiKey = "el-test";
-
-        Assert.True(vm.CanSave);
-    }
-
-    [Fact]
     public void CanSave_FalseWhenMissingAssemblyAiKey()
     {
         var vm = new SettingsViewModel(_secrets, _settings);
@@ -132,6 +64,7 @@ public class SettingsViewModelTests : IDisposable
     public void CanSave_TrueWhenKeysAreSavedInStore()
     {
         // Pre-populate audio secrets store.
+        _secrets.Write(SecretsStore.AnthropicApiKey, "sk-saved");
         _secrets.Write(SecretsStore.AssemblyAiApiKey, "aai-saved");
         _secrets.Write(SecretsStore.ElevenLabsApiKey, "el-saved");
 
@@ -142,36 +75,25 @@ public class SettingsViewModelTests : IDisposable
         Assert.True(vm.CanSave);
     }
 
+    [Fact]
+    public void CanSave_FalseWhenMissingAnthropicKey()
+    {
+        var vm = new SettingsViewModel(_secrets, _settings);
+        vm.AssemblyAiApiKey = "aai-test";
+        vm.ElevenLabsApiKey = "el-test";
+
+        Assert.False(vm.CanSave);
+    }
+
     // -- Model list tests --
 
     [Fact]
-    public void AvailableModels_ChangesWhenProviderChanges()
+    public void AvailableModels_DefaultIsCheapHaiku()
     {
         var vm = new SettingsViewModel(_secrets, _settings);
 
-        vm.SelectedProvider = "anthropic";
-        Assert.Equal(SettingsViewModel.CodexModels, vm.AvailableModels);
-
-        vm.SelectedProvider = "zai";
-        Assert.Equal(SettingsViewModel.CodexModels, vm.AvailableModels);
-
-        vm.SelectedProvider = "openai";
-        Assert.Equal(SettingsViewModel.CodexModels, vm.AvailableModels);
-    }
-
-    [Fact]
-    public void SelectedModel_AutoSelectsFirstWhenProviderChanges()
-    {
-        var vm = new SettingsViewModel(_secrets, _settings);
-
-        vm.SelectedProvider = "zai";
-        Assert.Equal("gpt-5.5", vm.SelectedModel);
-
-        vm.SelectedProvider = "openai";
-        Assert.Equal("gpt-5.5", vm.SelectedModel);
-
-        vm.SelectedProvider = "anthropic";
-        Assert.Equal("gpt-5.5", vm.SelectedModel);
+        Assert.Equal("claude-haiku-5-5", vm.SelectedModel);
+        Assert.Contains(vm.AvailableModels, m => m.Value == "claude-sonnet-5-5");
     }
 
     // -- Save persistence tests --
@@ -193,36 +115,19 @@ public class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
-    public void Save_WritesOpenAiKeyToSecretsStore()
-    {
-        var vm = new SettingsViewModel(_secrets, _settings);
-        vm.SelectedProvider = "openai";
-        vm.OpenAiApiKey = "openai-new";
-        vm.AssemblyAiApiKey = "aai-new";
-        vm.ElevenLabsApiKey = "el-new";
-
-        vm.Save();
-
-        Assert.Equal("openai-new", _secrets.Read(SecretsStore.OpenAiApiKey));
-        Assert.Equal("codex", _settings.LlmProvider);
-        Assert.Equal("gpt-5.5", _settings.LlmModel);
-    }
-
-    [Fact]
     public void Save_WritesSettingsToSettingsStore()
     {
         var vm = new SettingsViewModel(_secrets, _settings);
-        vm.SelectedProvider = "zai";
-        vm.SelectedModel = "gpt-5.4";
+        vm.SelectedModel = "claude-sonnet-5-5";
         vm.ElevenLabsVoiceId = "custom-voice";
-        vm.ZaiApiKey = "zai-key";
+        vm.AnthropicApiKey = "sk-key";
         vm.AssemblyAiApiKey = "aai-key";
         vm.ElevenLabsApiKey = "el-key";
 
         vm.Save();
 
-        Assert.Equal("codex", _settings.LlmProvider);
-        Assert.Equal("gpt-5.4", _settings.LlmModel);
+        Assert.Equal("anthropic", _settings.LlmProvider);
+        Assert.Equal("claude-sonnet-5-5", _settings.LlmModel);
         Assert.Equal("custom-voice", _settings.ElevenLabsVoiceId);
     }
 
@@ -350,46 +255,29 @@ public class SettingsViewModelTests : IDisposable
         Assert.Equal("", vm.AnthropicApiKey);
     }
 
-    [Fact]
-    public void ClearOpenAiKey_ResetsSavedState()
-    {
-        _secrets.Write(SecretsStore.OpenAiApiKey, "openai-saved");
-        var vm = new SettingsViewModel(_secrets, _settings);
-
-        Assert.True(vm.OpenAiKeyIsSaved);
-
-        vm.ClearOpenAiKey();
-
-        Assert.False(vm.OpenAiKeyIsSaved);
-        Assert.Equal("", vm.OpenAiApiKey);
-    }
-
     // -- Pre-populated state tests --
 
     [Fact]
     public void LoadsFromStores_ProviderAndModel()
     {
-        _settings.LlmProvider = "zai";
-        _settings.LlmModel = "glm-4.5v";
+        _settings.LlmProvider = "legacy-provider";
+        _settings.LlmModel = "unknown-model";
 
         var vm = new SettingsViewModel(_secrets, _settings);
 
-        Assert.Equal("codex", vm.SelectedProvider);
-        Assert.Equal("gpt-5.5", vm.SelectedModel);
+        Assert.Equal("anthropic", vm.SelectedProvider);
+        Assert.Equal("claude-haiku-5-5", vm.SelectedModel);
     }
 
     [Fact]
     public void LoadsFromStores_SavedKeyFlags()
     {
         _secrets.Write(SecretsStore.AnthropicApiKey, "sk-saved");
-        _secrets.Write(SecretsStore.OpenAiApiKey, "openai-saved");
         _secrets.Write(SecretsStore.ElevenLabsApiKey, "el-saved");
 
         var vm = new SettingsViewModel(_secrets, _settings);
 
         Assert.True(vm.AnthropicKeyIsSaved);
-        Assert.True(vm.OpenAiKeyIsSaved);
-        Assert.False(vm.ZaiKeyIsSaved);
         Assert.False(vm.AssemblyAiKeyIsSaved);
         Assert.True(vm.ElevenLabsKeyIsSaved);
     }
@@ -447,33 +335,6 @@ public class SettingsViewModelTests : IDisposable
 
         Assert.Equal(TestState.Failure, vm.AnthropicTestState);
         Assert.NotNull(vm.AnthropicTestError);
-    }
-
-    [Fact]
-    public async Task TestZaiAsync_SuccessOnOk()
-    {
-        var handler = new FakeHttpHandler(HttpStatusCode.OK);
-        var httpClient = new HttpClient(handler);
-        var vm = new SettingsViewModel(_secrets, _settings, httpClient);
-        vm.ZaiApiKey = "zai-test";
-
-        await vm.TestZaiAsync();
-
-        Assert.Equal(TestState.Success, vm.ZaiTestState);
-    }
-
-    [Fact]
-    public async Task TestOpenAiAsync_SuccessOnOk()
-    {
-        var handler = new FakeHttpHandler(HttpStatusCode.OK);
-        var httpClient = new HttpClient(handler);
-        var vm = new SettingsViewModel(_secrets, _settings, httpClient);
-        vm.OpenAiApiKey = "openai-test";
-
-        await vm.TestOpenAiAsync();
-
-        Assert.Equal(TestState.Success, vm.OpenAiTestState);
-        Assert.Null(vm.OpenAiTestError);
     }
 
     [Fact]
@@ -535,23 +396,6 @@ public class SettingsViewModelTests : IDisposable
         // AssemblyAI uses raw key, NOT "Bearer <key>".
         var authHeader = handler.LastRequest.Headers.GetValues("Authorization");
         Assert.Contains("raw-key-123", authHeader);
-    }
-
-    [Fact]
-    public async Task TestOpenAiAsync_UsesChatCompletionsUrlAndBearerHeader()
-    {
-        var handler = new CapturingHandler(HttpStatusCode.OK);
-        var httpClient = new HttpClient(handler);
-        var vm = new SettingsViewModel(_secrets, _settings, httpClient);
-        vm.OpenAiApiKey = "openai-capture";
-
-        await vm.TestOpenAiAsync();
-
-        Assert.NotNull(handler.LastRequest);
-        Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
-        Assert.Contains("/v1/chat/completions", handler.LastRequest.RequestUri!.ToString());
-        var authHeader = handler.LastRequest.Headers.GetValues("Authorization");
-        Assert.Contains("Bearer openai-capture", authHeader);
     }
 
     [Fact]

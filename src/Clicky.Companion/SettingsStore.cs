@@ -52,12 +52,6 @@ public class SettingsStore
         set { lock (_lock) { _data.OnboardingComplete = value; Save(); } }
     }
 
-    public bool AnalyticsOptOut
-    {
-        get { lock (_lock) return _data.AnalyticsOptOut; }
-        set { lock (_lock) { _data.AnalyticsOptOut = value; Save(); } }
-    }
-
     /// <summary>
     /// Hides Clicky's idle cursor-following overlay while still allowing
     /// explicit AI pointing/drawing after a voice turn.
@@ -126,10 +120,10 @@ public class SettingsStore
     internal class SettingsData
     {
         [JsonPropertyName("llmProvider")]
-        public string LlmProvider { get; set; } = "codex";
+        public string LlmProvider { get; set; } = "anthropic";
 
         [JsonPropertyName("llmModel")]
-        public string LlmModel { get; set; } = "gpt-5.5";
+        public string LlmModel { get; set; } = "claude-haiku-5-5";
 
         [JsonPropertyName("elevenLabsVoiceId")]
         // Default to Adam — one of ElevenLabs' built-in default voices that free
@@ -139,9 +133,6 @@ public class SettingsStore
 
         [JsonPropertyName("onboardingComplete")]
         public bool OnboardingComplete { get; set; }
-
-        [JsonPropertyName("analyticsOptOut")]
-        public bool AnalyticsOptOut { get; set; }
 
         [JsonPropertyName("gamerModeEnabled")]
         public bool GamerModeEnabled { get; set; }

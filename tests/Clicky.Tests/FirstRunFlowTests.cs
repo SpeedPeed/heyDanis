@@ -41,32 +41,19 @@ public class FirstRunFlowTests : IDisposable
     }
 
     [Fact]
+    public void HasRequiredKeys_FalseWhenAnthropicKeyMissing()
+    {
+        _secrets.Write(SecretsStore.AssemblyAiApiKey, "aai-test");
+        _secrets.Write(SecretsStore.ElevenLabsApiKey, "el-test");
+
+        Assert.False(App.App.HasRequiredKeys(_secrets, _settings));
+    }
+
+    [Fact]
     public void HasRequiredKeys_TrueWhenAllAnthropicKeysPresent()
     {
         _settings.LlmProvider = "anthropic";
         _secrets.Write(SecretsStore.AnthropicApiKey, "sk-test");
-        _secrets.Write(SecretsStore.AssemblyAiApiKey, "aai-test");
-        _secrets.Write(SecretsStore.ElevenLabsApiKey, "el-test");
-
-        Assert.True(App.App.HasRequiredKeys(_secrets, _settings));
-    }
-
-    [Fact]
-    public void HasRequiredKeys_TrueWhenAllZaiKeysPresent()
-    {
-        _settings.LlmProvider = "zai";
-        _secrets.Write(SecretsStore.ZaiApiKey, "zai-test");
-        _secrets.Write(SecretsStore.AssemblyAiApiKey, "aai-test");
-        _secrets.Write(SecretsStore.ElevenLabsApiKey, "el-test");
-
-        Assert.True(App.App.HasRequiredKeys(_secrets, _settings));
-    }
-
-    [Fact]
-    public void HasRequiredKeys_TrueWhenAllOpenAiKeysPresent()
-    {
-        _settings.LlmProvider = "openai";
-        _secrets.Write(SecretsStore.OpenAiApiKey, "openai-test");
         _secrets.Write(SecretsStore.AssemblyAiApiKey, "aai-test");
         _secrets.Write(SecretsStore.ElevenLabsApiKey, "el-test");
 
@@ -95,39 +82,6 @@ public class FirstRunFlowTests : IDisposable
         Assert.False(App.App.HasRequiredKeys(_secrets, _settings));
     }
 
-    [Fact]
-    public void HasRequiredKeys_TrueWhenAudioKeysPresentWithoutLlmKeyForCodexOAuth()
-    {
-        _settings.LlmProvider = "anthropic";
-        // No Anthropic key.
-        _secrets.Write(SecretsStore.AssemblyAiApiKey, "aai-test");
-        _secrets.Write(SecretsStore.ElevenLabsApiKey, "el-test");
-
-        Assert.True(App.App.HasRequiredKeys(_secrets, _settings));
-    }
-
-    [Fact]
-    public void HasRequiredKeys_TrueWhenLegacyZaiProviderButAudioKeysPresent()
-    {
-        _settings.LlmProvider = "zai";
-        _secrets.Write(SecretsStore.AnthropicApiKey, "sk-test"); // Wrong provider's key.
-        _secrets.Write(SecretsStore.AssemblyAiApiKey, "aai-test");
-        _secrets.Write(SecretsStore.ElevenLabsApiKey, "el-test");
-
-        Assert.True(App.App.HasRequiredKeys(_secrets, _settings));
-    }
-
-    [Fact]
-    public void HasRequiredKeys_TrueWhenLegacyOpenAiProviderButAudioKeysPresent()
-    {
-        _settings.LlmProvider = "openai";
-        _secrets.Write(SecretsStore.AnthropicApiKey, "sk-test");
-        _secrets.Write(SecretsStore.AssemblyAiApiKey, "aai-test");
-        _secrets.Write(SecretsStore.ElevenLabsApiKey, "el-test");
-
-        Assert.True(App.App.HasRequiredKeys(_secrets, _settings));
-    }
-
     // -- ValidateRequiredFields tests --
 
     [Fact]
@@ -138,39 +92,7 @@ public class FirstRunFlowTests : IDisposable
 
         vm.ValidateRequiredFields();
 
-        Assert.Null(vm.AnthropicKeyError);
-        Assert.Null(vm.OpenAiKeyError);
-        Assert.Null(vm.ZaiKeyError); // Not required for anthropic provider.
-        Assert.NotNull(vm.AssemblyAiKeyError);
-        Assert.NotNull(vm.ElevenLabsKeyError);
-    }
-
-    [Fact]
-    public void ValidateRequiredFields_MarksZaiKeyMissingWhenSelectedProvider()
-    {
-        var vm = new SettingsViewModel(_secrets, _settings);
-        vm.SelectedProvider = "zai";
-
-        vm.ValidateRequiredFields();
-
-        Assert.Null(vm.AnthropicKeyError); // Not required for zai provider.
-        Assert.Null(vm.OpenAiKeyError);
-        Assert.Null(vm.ZaiKeyError);
-        Assert.NotNull(vm.AssemblyAiKeyError);
-        Assert.NotNull(vm.ElevenLabsKeyError);
-    }
-
-    [Fact]
-    public void ValidateRequiredFields_MarksOpenAiKeyMissingWhenSelectedProvider()
-    {
-        var vm = new SettingsViewModel(_secrets, _settings);
-        vm.SelectedProvider = "openai";
-
-        vm.ValidateRequiredFields();
-
-        Assert.Null(vm.AnthropicKeyError);
-        Assert.Null(vm.OpenAiKeyError);
-        Assert.Null(vm.ZaiKeyError);
+        Assert.NotNull(vm.AnthropicKeyError);
         Assert.NotNull(vm.AssemblyAiKeyError);
         Assert.NotNull(vm.ElevenLabsKeyError);
     }
@@ -216,7 +138,7 @@ public class FirstRunFlowTests : IDisposable
         vm.SelectedProvider = "anthropic";
         vm.ValidateRequiredFields();
 
-        Assert.Null(vm.AnthropicKeyError);
+        Assert.NotNull(vm.AnthropicKeyError);
 
         // User enters the key — error should clear.
         vm.AnthropicApiKey = "sk-new";

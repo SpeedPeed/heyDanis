@@ -17,7 +17,6 @@
   <ItemGroup>
     <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
-    <PackageReference Include="WinSparkle" Version="0.9.2" />
   </ItemGroup>
 
   <ItemGroup>

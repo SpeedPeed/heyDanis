@@ -16,8 +16,6 @@ public class SecretsStore
 {
     /// <summary>Standardized key constants for each service.</summary>
     public const string AnthropicApiKey = "anthropic_api_key";
-    public const string OpenAiApiKey = "openai_api_key";
-    public const string ZaiApiKey = "zai_api_key";
     public const string AssemblyAiApiKey = "assemblyai_api_key";
     public const string ElevenLabsApiKey = "elevenlabs_api_key";
 

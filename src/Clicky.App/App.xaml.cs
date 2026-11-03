@@ -27,7 +27,6 @@ public partial class App : Application
     private CompanionManager? _companionManager;
     private OverlayWindowManager? _overlayManager;
     private DispatcherTimer? _permissionPollTimer;
-    private AutoUpdateService? _autoUpdateService;
     private SettingsStore? _settingsStore;
     private SecretsStore? _secretsStore;
     private PointingSmokeWindow? _pointingSmokeWindow;
@@ -79,7 +78,6 @@ public partial class App : Application
                 saved = true;
                 _settingsStore.OnboardingComplete = true;
                 _companionViewModel.HasCompletedOnboarding = true;
-                ClickyAnalytics.TrackOnboardingCompleted();
             };
 
             // ShowDialog blocks until the window is closed.
@@ -123,10 +121,6 @@ public partial class App : Application
         // Register for auto-start on first launch (mirrors SMAppService.mainApp.register).
         AutoStartRegistration.EnsureRegistered();
 
-        // Configure PostHog analytics (mirrors ClickyAnalytics.configure() in Mac).
-        ClickyAnalytics.Configure();
-        ClickyAnalytics.TrackAppOpened();
-
         // Probe the Windows 10/11 microphone privacy gate in the background.
         _ = ProbeMicrophonePermissionAsync();
 
@@ -168,11 +162,6 @@ public partial class App : Application
 
         // Populate the tray Model submenu.
         RefreshModelMenu();
-
-        // Initialize WinSparkle auto-update (mirrors Sparkle integration in Mac).
-        _autoUpdateService = new AutoUpdateService();
-        _autoUpdateService.Initialize(
-            "https://raw.githubusercontent.com/julianjear/makesomething-mac-app/main/appcast.xml");
     }
 
     /// <summary>
@@ -239,8 +228,9 @@ public partial class App : Application
 
     private ILlmClient BuildLlmClient()
     {
-        NormalizeCodexProviderSettings();
-        return new CodexAppServerClient(model: _settingsStore!.LlmModel);
+        NormalizeAnthropicModelSettings();
+        var apiKey = _secretsStore!.Read(SecretsStore.AnthropicApiKey) ?? "";
+        return new AnthropicDirectClient(apiKey, model: _settingsStore!.LlmModel);
     }
 
     private AssemblyAiStreamingTranscriber BuildTranscriber()
@@ -265,11 +255,8 @@ public partial class App : Application
     {
         return new List<ModelMenuEntry>
         {
-            new() { Provider = "codex", Model = "gpt-5.5", DisplayName = "GPT-5.5 (Codex OAuth)", IsEnabled = true },
-            new() { Provider = "codex", Model = "gpt-5.4", DisplayName = "GPT-5.4 (Codex OAuth)", IsEnabled = true },
-            new() { Provider = "codex", Model = "gpt-5.4-mini", DisplayName = "GPT-5.4 Mini (Codex OAuth)", IsEnabled = true },
-            new() { Provider = "codex", Model = "gpt-5.3-codex", DisplayName = "GPT-5.3 Codex", IsEnabled = true },
-            new() { Provider = "codex", Model = "gpt-5.3-codex-spark", DisplayName = "GPT-5.3 Codex Spark", IsEnabled = true },
+            new() { Provider = "anthropic", Model = "claude-haiku-5-5", DisplayName = "Claude Haiku 5.5 (günstig)", IsEnabled = true },
+            new() { Provider = "anthropic", Model = "claude-sonnet-5-5", DisplayName = "Claude Sonnet 5.5 (genauer)", IsEnabled = true },
         };
     }
 
@@ -280,17 +267,8 @@ public partial class App : Application
     {
         return (provider, model) switch
         {
-            ("codex", "gpt-5.5") => "GPT-5.5 (Codex OAuth)",
-            ("codex", "gpt-5.4") => "GPT-5.4 (Codex OAuth)",
-            ("codex", "gpt-5.4-mini") => "GPT-5.4 Mini (Codex OAuth)",
-            ("codex", "gpt-5.3-codex") => "GPT-5.3 Codex",
-            ("codex", "gpt-5.3-codex-spark") => "GPT-5.3 Codex Spark",
-            ("anthropic", "claude-sonnet-4-6") => "Claude Sonnet 4.6",
-            ("anthropic", "claude-haiku-4-5") => "Claude Haiku 4.5",
-            ("anthropic", "claude-opus-4-6") => "Claude Opus 4.6",
-            ("openai", "gpt-5.2") => "GPT-5.2",
-            ("zai", "glm-4.6v") => "GLM-4.6V",
-            ("zai", "glm-4.5v") => "GLM-4.5V",
+            ("anthropic", "claude-haiku-5-5") => "Claude Haiku 5.5",
+            ("anthropic", "claude-sonnet-5-5") => "Claude Sonnet 5.5",
             _ => model,
         };
     }
@@ -326,32 +304,29 @@ public partial class App : Application
 
         // Refresh the tray menu to reflect the new active model.
         RefreshModelMenu();
-
-        // Track analytics event.
-        ClickyAnalytics.TrackModelSwitched(fromProvider, fromModel, e.Provider, e.Model);
     }
 
     /// <summary>
-    /// Checks whether the currently-selected provider's LLM key and both audio
-    /// keys are present in the SecretsStore.
+    /// Checks whether the Anthropic key and both audio keys are present in the SecretsStore.
+    /// (The audio keys stop being required once local Whisper/Piper land in M3.)
     /// </summary>
     internal static bool HasRequiredKeys(SecretsStore secrets, SettingsStore settings)
     {
-        return secrets.Exists(SecretsStore.AssemblyAiApiKey)
+        return secrets.Exists(SecretsStore.AnthropicApiKey)
+            && secrets.Exists(SecretsStore.AssemblyAiApiKey)
             && secrets.Exists(SecretsStore.ElevenLabsApiKey);
     }
 
-    private void NormalizeCodexProviderSettings()
+    private void NormalizeAnthropicModelSettings()
     {
         if (_settingsStore is null) return;
 
-        if (_settingsStore.LlmProvider != "codex")
-            _settingsStore.LlmProvider = "codex";
+        if (_settingsStore.LlmProvider != "anthropic")
+            _settingsStore.LlmProvider = "anthropic";
 
-        var model = _settingsStore.LlmModel;
-        var supported = model is "gpt-5.5" or "gpt-5.4" or "gpt-5.4-mini" or "gpt-5.3-codex" or "gpt-5.3-codex-spark";
-        if (!supported)
-            _settingsStore.LlmModel = "gpt-5.5";
+        var normalizedModel = SettingsViewModel.NormalizeModel(_settingsStore.LlmModel);
+        if (_settingsStore.LlmModel != normalizedModel)
+            _settingsStore.LlmModel = normalizedModel;
     }
 
     /// <summary>
@@ -394,7 +369,6 @@ public partial class App : Application
 
     private void OnSettingsClicked(object? sender, System.EventArgs e)
     {
-        ClickyAnalytics.TrackSettingsOpened();
         OpenSettingsWindow(isFirstRun: false);
     }
 
@@ -537,8 +511,6 @@ public partial class App : Application
         }
 
         Seed(secrets, "CLICKY_ANTHROPIC_KEY", SecretsStore.AnthropicApiKey, envVars);
-        Seed(secrets, "CLICKY_OPENAI_KEY", SecretsStore.OpenAiApiKey, envVars);
-        Seed(secrets, "CLICKY_ZAI_KEY", SecretsStore.ZaiApiKey, envVars);
         Seed(secrets, "CLICKY_ASSEMBLYAI_KEY", SecretsStore.AssemblyAiApiKey, envVars);
         Seed(secrets, "CLICKY_ELEVENLABS_KEY", SecretsStore.ElevenLabsApiKey, envVars);
     }
@@ -554,11 +526,6 @@ public partial class App : Application
             if (!settings.OnboardingComplete && OnboardingService.HasCompletedOnboarding())
             {
                 settings.OnboardingComplete = true;
-            }
-
-            if (!settings.AnalyticsOptOut && ClickyAnalytics.IsOptedOut())
-            {
-                settings.AnalyticsOptOut = true;
             }
         }
         catch
@@ -577,14 +544,9 @@ public partial class App : Application
             Environment.Exit(0);
         });
 
-        // 1. Stop timers and analytics first (no async work).
+        // 1. Stop timers first (no async work).
         _permissionPollTimer?.Stop();
         _permissionPollTimer = null;
-
-        _autoUpdateService?.Dispose();
-        _autoUpdateService = null;
-
-        ClickyAnalytics.Shutdown();
 
         // 2. Async-dispose CompanionManager with 2s timeout for background tasks.
         if (_companionManager is not null)

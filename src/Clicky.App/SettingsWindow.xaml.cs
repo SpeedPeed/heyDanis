@@ -52,8 +52,6 @@ public partial class SettingsWindow : Window
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(SettingsViewModel.AnthropicKeyIsSaved) or
-            nameof(SettingsViewModel.OpenAiKeyIsSaved) or
-            nameof(SettingsViewModel.ZaiKeyIsSaved) or
             nameof(SettingsViewModel.AssemblyAiKeyIsSaved) or
             nameof(SettingsViewModel.ElevenLabsKeyIsSaved))
         {
@@ -61,8 +59,6 @@ public partial class SettingsWindow : Window
         }
 
         if (e.PropertyName is nameof(SettingsViewModel.AnthropicTestState) or
-            nameof(SettingsViewModel.OpenAiTestState) or
-            nameof(SettingsViewModel.ZaiTestState) or
             nameof(SettingsViewModel.AssemblyAiTestState) or
             nameof(SettingsViewModel.ElevenLabsTestState))
         {
@@ -82,8 +78,6 @@ public partial class SettingsWindow : Window
     private void UpdateSavedKeyVisibility()
     {
         SetSavedKeyState(AnthropicKeyBox, AnthropicSavedPlaceholder, AnthropicChangeBtn, _viewModel.AnthropicKeyIsSaved);
-        SetSavedKeyState(OpenAiKeyBox, OpenAiSavedPlaceholder, OpenAiChangeBtn, _viewModel.OpenAiKeyIsSaved);
-        SetSavedKeyState(ZaiKeyBox, ZaiSavedPlaceholder, ZaiChangeBtn, _viewModel.ZaiKeyIsSaved);
         SetSavedKeyState(AssemblyAiKeyBox, AssemblyAiSavedPlaceholder, AssemblyAiChangeBtn, _viewModel.AssemblyAiKeyIsSaved);
         SetSavedKeyState(ElevenLabsKeyBox, ElevenLabsSavedPlaceholder, ElevenLabsChangeBtn, _viewModel.ElevenLabsKeyIsSaved);
     }
@@ -113,8 +107,6 @@ public partial class SettingsWindow : Window
     private void UpdateTestButtonStates()
     {
         ApplyTestState(AnthropicTestBtn, _viewModel.AnthropicTestState, _viewModel.AnthropicTestError);
-        ApplyTestState(OpenAiTestBtn, _viewModel.OpenAiTestState, _viewModel.OpenAiTestError);
-        ApplyTestState(ZaiTestBtn, _viewModel.ZaiTestState, _viewModel.ZaiTestError);
         ApplyTestState(AssemblyAiTestBtn, _viewModel.AssemblyAiTestState, _viewModel.AssemblyAiTestError);
         ApplyTestState(ElevenLabsTestBtn, _viewModel.ElevenLabsTestState, _viewModel.ElevenLabsTestError);
     }
@@ -153,12 +145,6 @@ public partial class SettingsWindow : Window
     private void AnthropicKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
         => _viewModel.AnthropicApiKey = AnthropicKeyBox.Password;
 
-    private void ZaiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
-        => _viewModel.ZaiApiKey = ZaiKeyBox.Password;
-
-    private void OpenAiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
-        => _viewModel.OpenAiApiKey = OpenAiKeyBox.Password;
-
     private void AssemblyAiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
         => _viewModel.AssemblyAiApiKey = AssemblyAiKeyBox.Password;
 
@@ -171,18 +157,6 @@ public partial class SettingsWindow : Window
     {
         _viewModel.ClearAnthropicKey();
         AnthropicKeyBox.Focus();
-    }
-
-    private void ZaiChange_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.ClearZaiKey();
-        ZaiKeyBox.Focus();
-    }
-
-    private void OpenAiChange_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.ClearOpenAiKey();
-        OpenAiKeyBox.Focus();
     }
 
     private void AssemblyAiChange_Click(object sender, RoutedEventArgs e)
@@ -202,12 +176,6 @@ public partial class SettingsWindow : Window
     private async void AnthropicTest_Click(object sender, RoutedEventArgs e)
         => await _viewModel.TestAnthropicAsync();
 
-    private async void ZaiTest_Click(object sender, RoutedEventArgs e)
-        => await _viewModel.TestZaiAsync();
-
-    private async void OpenAiTest_Click(object sender, RoutedEventArgs e)
-        => await _viewModel.TestOpenAiAsync();
-
     private async void AssemblyAiTest_Click(object sender, RoutedEventArgs e)
         => await _viewModel.TestAssemblyAiAsync();
 
@@ -218,12 +186,6 @@ public partial class SettingsWindow : Window
 
     private void AnthropicLink_Click(object sender, RoutedEventArgs e)
         => OpenUrl("https://console.anthropic.com/settings/keys");
-
-    private void ZaiLink_Click(object sender, RoutedEventArgs e)
-        => OpenUrl("https://z.ai/manage-apikey/apikey-list");
-
-    private void OpenAiLink_Click(object sender, RoutedEventArgs e)
-        => OpenUrl("https://platform.openai.com/api-keys");
 
     private void AssemblyAiLink_Click(object sender, RoutedEventArgs e)
         => OpenUrl("https://www.assemblyai.com/app/account");
