@@ -143,7 +143,7 @@ public sealed class FullTurnEndToEndTests
         await harness.Manager.CurrentResponseTask!.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.True(settingsRequested);
-        Assert.Equal("Your API key is missing or invalid. Open Settings to fix.", vm.LastError);
+        Assert.Equal("Dein Anthropic-Key fehlt oder stimmt nicht. Öffne die Einstellungen, um ihn zu korrigieren.", vm.LastError);
         Assert.Equal(VoiceState.Idle, vm.VoiceState);
 
         harness.Shutdown();
@@ -204,7 +204,7 @@ public sealed class FullTurnEndToEndTests
         harness.Manager.SendTranscriptToClaudeWithScreenshot("say something");
         await harness.Manager.CurrentResponseTask!.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.Equal("Something went wrong - try again, and if it keeps happening, check Settings.", Normalize(vm.LastError));
+        Assert.Equal("Da ist was schiefgelaufen - probier es nochmal. Wenn es öfter passiert, schau in die Einstellungen.", Normalize(vm.LastError));
         Assert.Equal(VoiceState.Idle, vm.VoiceState);
 
         harness.Shutdown();

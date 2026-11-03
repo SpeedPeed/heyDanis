@@ -27,6 +27,9 @@ public sealed class CompanionViewModel : INotifyPropertyChanged
     private bool _gamerModeEnabled;
     private string? _lastError;
     private string _llmModelDisplay = "";
+    private string _speechRecognitionStatus = "";
+    private string _voiceStatus = "";
+    private string _monthlyCostDisplay = "0,00 €";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -45,11 +48,11 @@ public sealed class CompanionViewModel : INotifyPropertyChanged
 
     public string VoiceStateDisplay => _voiceState switch
     {
-        VoiceState.Idle => "Idle",
-        VoiceState.Listening => "Listening",
-        VoiceState.Processing => "Processing",
-        VoiceState.Responding => "Responding",
-        _ => "Idle",
+        VoiceState.Idle => "Bereit",
+        VoiceState.Listening => "Hört zu",
+        VoiceState.Processing => "Denkt nach",
+        VoiceState.Responding => "Antwortet",
+        _ => "Bereit",
     };
 
     public bool HasMicrophonePermission
@@ -66,7 +69,7 @@ public sealed class CompanionViewModel : INotifyPropertyChanged
         }
     }
 
-    public string MicrophonePermissionDisplay => _hasMicrophonePermission ? "Granted" : "Not granted";
+    public string MicrophonePermissionDisplay => _hasMicrophonePermission ? "Erlaubt" : "Nicht erlaubt";
 
     public bool HasScreenCapturePermission
     {
@@ -82,7 +85,7 @@ public sealed class CompanionViewModel : INotifyPropertyChanged
         }
     }
 
-    public string ScreenCapturePermissionDisplay => _hasScreenCapturePermission ? "Granted" : "Not granted";
+    public string ScreenCapturePermissionDisplay => _hasScreenCapturePermission ? "Erlaubt" : "Nicht erlaubt";
 
     public bool AllPermissionsGranted => _hasMicrophonePermission && _hasScreenCapturePermission;
 
@@ -150,7 +153,7 @@ public sealed class CompanionViewModel : INotifyPropertyChanged
         }
     }
 
-    public string GamerModeDisplay => _gamerModeEnabled ? "On" : "Off";
+    public string GamerModeDisplay => _gamerModeEnabled ? "An" : "Aus";
 
     /// <summary>
     /// One-shot error banner text shown in the companion panel.
@@ -181,6 +184,42 @@ public sealed class CompanionViewModel : INotifyPropertyChanged
         {
             if (_llmModelDisplay == value) return;
             _llmModelDisplay = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Speech recognition status, e.g. "Whisper Small – bereit" or "wird geladen … 42 %".</summary>
+    public string SpeechRecognitionStatus
+    {
+        get => _speechRecognitionStatus;
+        set
+        {
+            if (_speechRecognitionStatus == value) return;
+            _speechRecognitionStatus = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Voice (TTS) status, e.g. "Thorsten – bereit".</summary>
+    public string VoiceStatus
+    {
+        get => _voiceStatus;
+        set
+        {
+            if (_voiceStatus == value) return;
+            _voiceStatus = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Claude API cost of the current month, e.g. "0,42 € (318 Fragen)".</summary>
+    public string MonthlyCostDisplay
+    {
+        get => _monthlyCostDisplay;
+        set
+        {
+            if (_monthlyCostDisplay == value) return;
+            _monthlyCostDisplay = value;
             OnPropertyChanged();
         }
     }

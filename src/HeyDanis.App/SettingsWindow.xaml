@@ -4,7 +4,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:companion="clr-namespace:HeyDanis.Companion;assembly=HeyDanis.Companion"
         xmlns:local="clr-namespace:HeyDanis.App"
-        Title="Settings"
+        Title="heyDanis – Einstellungen"
         Width="480" Height="820"
         MinWidth="400" MinHeight="600"
         WindowStartupLocation="CenterScreen"
@@ -20,7 +20,7 @@
         <SolidColorBrush x:Key="TextTertiary" Color="#8E8E93" />
         <SolidColorBrush x:Key="Success" Color="#34C759" />
         <SolidColorBrush x:Key="Failure" Color="#FF453A" />
-        <SolidColorBrush x:Key="Accent" Color="#3B82F6" />
+        <SolidColorBrush x:Key="Accent" Color="#FF6A2B" />
         <SolidColorBrush x:Key="InputBackground" Color="#38383A" />
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
@@ -157,17 +157,22 @@
 
             <!-- Header -->
             <TextBlock x:Name="HeaderText"
-                       Text="Settings"
+                       Text="Einstellungen"
                        FontSize="20"
                        FontWeight="SemiBold"
                        Foreground="{StaticResource TextPrimary}"
                        Margin="0,0,0,20" />
 
             <!-- LLM Model -->
-            <TextBlock Text="MODEL"
+            <TextBlock Text="KI-MODELL"
                        FontSize="10" FontWeight="SemiBold"
                        Foreground="{StaticResource TextTertiary}"
                        Margin="0,0,0,6" />
+            <TextBlock Text="Haiku kostet nur Bruchteile eines Cents pro Frage. Sonnet ist genauer, aber rund 20-mal teurer."
+                       FontSize="11"
+                       Foreground="{StaticResource TextTertiary}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,8" />
 
             <ComboBox x:Name="ModelCombo"
                       Style="{StaticResource DarkComboBox}"
@@ -181,7 +186,7 @@
             <Border Height="0.5" Background="{StaticResource BorderSubtle}" Margin="0,0,0,20" />
 
             <!-- API KEYS header -->
-            <TextBlock Text="API KEYS"
+            <TextBlock Text="API-KEYS"
                        FontSize="10" FontWeight="SemiBold"
                        Foreground="{StaticResource TextTertiary}"
                        Margin="0,0,0,12" />
@@ -192,7 +197,7 @@
                            FontSize="13" FontWeight="Medium"
                            Foreground="{StaticResource TextSecondary}"
                            VerticalAlignment="Center" />
-                <Button Content="Get key &#x2192;"
+                <Button Content="Key holen &#x2192;"
                         Style="{StaticResource LinkButton}"
                         HorizontalAlignment="Right"
                         Click="AnthropicLink_Click" />
@@ -219,7 +224,7 @@
                          Visibility="Collapsed" />
                 <Button x:Name="AnthropicChangeBtn"
                         Grid.Column="1"
-                        Content="Change"
+                        Content="Ändern"
                         Style="{StaticResource TestButton}"
                         Click="AnthropicChange_Click"
                         Visibility="Collapsed"
@@ -234,15 +239,67 @@
             <!-- Anthropic key error -->
             <TextBlock Text="{Binding AnthropicKeyError}"
                        FontSize="11" Foreground="{StaticResource Failure}"
-                       Margin="0,0,0,4" />
+                       Margin="0,0,0,4"
+                       Visibility="{Binding AnthropicKeyError, Converter={StaticResource NullToCollapsed}}" />
 
+            <!-- Separator -->
+            <Border Height="0.5" Background="{StaticResource BorderSubtle}" Margin="0,8,0,16" />
+
+            <!-- SPEECH section -->
+            <TextBlock Text="SPRACHE &amp; STIMME"
+                       FontSize="10" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextTertiary}"
+                       Margin="0,0,0,6" />
+            <TextBlock Text="„Lokal“ läuft komplett auf deinem PC und kostet nichts. Beim ersten Start werden die Modelle einmalig heruntergeladen."
+                       FontSize="11"
+                       Foreground="{StaticResource TextTertiary}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,12" />
+
+            <TextBlock Text="Spracherkennung"
+                       FontSize="13" FontWeight="Medium"
+                       Foreground="{StaticResource TextSecondary}"
+                       Margin="0,0,0,6" />
+            <ComboBox Style="{StaticResource DarkComboBox}"
+                      ItemsSource="{Binding SpeechRecognitionChoices}"
+                      DisplayMemberPath="Display"
+                      SelectedValuePath="Value"
+                      SelectedValue="{Binding SelectedSpeechRecognitionId, Mode=TwoWay}"
+                      Margin="0,0,0,12" />
+
+            <TextBlock Text="Stimme"
+                       FontSize="13" FontWeight="Medium"
+                       Foreground="{StaticResource TextSecondary}"
+                       Margin="0,0,0,6" />
+            <ComboBox Style="{StaticResource DarkComboBox}"
+                      ItemsSource="{Binding VoiceChoices}"
+                      DisplayMemberPath="Display"
+                      SelectedValuePath="Value"
+                      SelectedValue="{Binding SelectedVoiceId, Mode=TwoWay}"
+                      Margin="0,0,0,12" />
+
+            <Grid Margin="0,0,0,4">
+                <TextBlock Text="Sprechtempo"
+                           FontSize="13" FontWeight="Medium"
+                           Foreground="{StaticResource TextSecondary}" />
+                <TextBlock Text="{Binding SpeakingRate, StringFormat={}{0:0.00}x}"
+                           FontSize="12"
+                           Foreground="{StaticResource TextTertiary}"
+                           HorizontalAlignment="Right" />
+            </Grid>
+            <Slider Minimum="0.7" Maximum="1.6" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                    Value="{Binding SpeakingRate, Mode=TwoWay}"
+                    Margin="0,0,0,16" />
+
+            <!-- AssemblyAI (only when chosen) -->
+            <StackPanel Visibility="{Binding ShowAssemblyAiKey, Converter={StaticResource BoolToVis}}">
             <!-- AssemblyAI API Key -->
             <Grid Margin="0,0,0,4">
-                <TextBlock Text="AssemblyAI (speech-to-text)"
+                <TextBlock Text="AssemblyAI-Key"
                            FontSize="13" FontWeight="Medium"
                            Foreground="{StaticResource TextSecondary}"
                            VerticalAlignment="Center" />
-                <Button Content="Get key &#x2192;"
+                <Button Content="Key holen &#x2192;"
                         Style="{StaticResource LinkButton}"
                         HorizontalAlignment="Right"
                         Click="AssemblyAiLink_Click" />
@@ -267,7 +324,7 @@
                          Visibility="Collapsed" />
                 <Button x:Name="AssemblyAiChangeBtn"
                         Grid.Column="1"
-                        Content="Change"
+                        Content="Ändern"
                         Style="{StaticResource TestButton}"
                         Click="AssemblyAiChange_Click"
                         Visibility="Collapsed"
@@ -284,14 +341,18 @@
                        FontSize="11" Foreground="{StaticResource Failure}"
                        Margin="0,0,0,4"
                        Visibility="{Binding AssemblyAiKeyError, Converter={StaticResource NullToCollapsed}}" />
+            </StackPanel>
+
+            <!-- ElevenLabs (only when chosen) -->
+            <StackPanel Visibility="{Binding ShowElevenLabsKey, Converter={StaticResource BoolToVis}}">
 
             <!-- ElevenLabs API Key -->
             <Grid Margin="0,0,0,4">
-                <TextBlock Text="ElevenLabs (text-to-speech)"
+                <TextBlock Text="ElevenLabs-Key"
                            FontSize="13" FontWeight="Medium"
                            Foreground="{StaticResource TextSecondary}"
                            VerticalAlignment="Center" />
-                <Button Content="Get key &#x2192;"
+                <Button Content="Key holen &#x2192;"
                         Style="{StaticResource LinkButton}"
                         HorizontalAlignment="Right"
                         Click="ElevenLabsLink_Click" />
@@ -316,7 +377,7 @@
                          Visibility="Collapsed" />
                 <Button x:Name="ElevenLabsChangeBtn"
                         Grid.Column="1"
-                        Content="Change"
+                        Content="Ändern"
                         Style="{StaticResource TestButton}"
                         Click="ElevenLabsChange_Click"
                         Visibility="Collapsed"
@@ -335,25 +396,26 @@
                        Visibility="{Binding ElevenLabsKeyError, Converter={StaticResource NullToCollapsed}}" />
 
             <!-- ElevenLabs Voice ID -->
-            <TextBlock Text="ELEVENLABS VOICE ID"
+            <TextBlock Text="ELEVENLABS VOICE-ID"
                        FontSize="10" FontWeight="SemiBold"
                        Foreground="{StaticResource TextTertiary}"
                        Margin="0,0,0,6" />
             <TextBox Style="{StaticResource DarkTextBox}"
                      Text="{Binding ElevenLabsVoiceId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      Margin="0,0,0,20" />
+            </StackPanel>
 
             <!-- Separator -->
             <Border Height="0.5" Background="{StaticResource BorderSubtle}" Margin="0,0,0,16" />
 
             <!-- AUDIO DEVICES header -->
-            <TextBlock Text="AUDIO DEVICES"
+            <TextBlock Text="AUDIOGERÄTE"
                        FontSize="10" FontWeight="SemiBold"
                        Foreground="{StaticResource TextTertiary}"
                        Margin="0,0,0,12" />
 
             <!-- Microphone selector -->
-            <TextBlock Text="Microphone"
+            <TextBlock Text="Mikrofon"
                        FontSize="13" FontWeight="Medium"
                        Foreground="{StaticResource TextSecondary}"
                        Margin="0,0,0,6" />
@@ -366,7 +428,7 @@
                       Margin="0,0,0,12" />
 
             <!-- Speaker / output selector -->
-            <TextBlock Text="Speakers / headphones"
+            <TextBlock Text="Lautsprecher / Kopfhörer"
                        FontSize="13" FontWeight="Medium"
                        Foreground="{StaticResource TextSecondary}"
                        Margin="0,0,0,6" />
@@ -382,7 +444,7 @@
             <Border Height="0.5" Background="{StaticResource BorderSubtle}" Margin="0,0,0,16" />
 
             <!-- Gamer mode -->
-            <TextBlock Text="GAMER MODE"
+            <TextBlock Text="GAMER-MODUS"
                        FontSize="10" FontWeight="SemiBold"
                        Foreground="{StaticResource TextTertiary}"
                        Margin="0,0,0,12" />
@@ -393,10 +455,10 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                    <TextBlock Text="Hide cursor while moving"
+                    <TextBlock Text="Cursor beim Bewegen ausblenden"
                                FontSize="13" FontWeight="Medium"
                                Foreground="{StaticResource TextSecondary}" />
-                    <TextBlock Text="heyDanis stays invisible during gameplay until it has something to point at."
+                    <TextBlock Text="heyDanis bleibt beim Zocken unsichtbar, bis es etwas zu zeigen gibt (dann mit Kreisen und Pfeilen)."
                                FontSize="11"
                                Foreground="{StaticResource TextTertiary}"
                                TextWrapping="Wrap"
@@ -418,12 +480,12 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Button Grid.Column="0"
-                        Content="Quit heyDanis"
+                        Content="heyDanis beenden"
                         Style="{StaticResource SecondaryButton}"
                         Click="Quit_Click" />
                 <Button x:Name="SaveButton"
                         Grid.Column="2"
-                        Content="Save"
+                        Content="Speichern"
                         Style="{StaticResource AccentButton}"
                         IsEnabled="{Binding CanSave}"
                         Click="Save_Click" />
@@ -436,7 +498,7 @@
                        Margin="0,0,0,4" />
 
             <!-- Help footnote -->
-            <TextBlock Text="Your keys are encrypted with your Windows account and stored only on this PC. heyDanis never uploads them anywhere."
+            <TextBlock Text="Deine Keys werden mit deinem Windows-Konto verschlüsselt und nur auf diesem PC gespeichert. heyDanis lädt sie nirgendwo hoch."
                        FontSize="11"
                        FontStyle="Italic"
                        Foreground="{StaticResource TextTertiary}"

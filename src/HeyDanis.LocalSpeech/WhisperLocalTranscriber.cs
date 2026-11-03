@@ -29,7 +29,7 @@ public sealed record WhisperModelChoice(string Id, string DisplayName, string Fi
 /// Thrown when the user talks before the local model finished downloading/loading.
 /// The message is shown to the user as-is.
 /// </summary>
-public sealed class LocalModelNotReadyException : Exception
+public sealed class LocalModelNotReadyException : SpeechServiceNotReadyException
 {
     public LocalModelNotReadyException(string message) : base(message) { }
 }

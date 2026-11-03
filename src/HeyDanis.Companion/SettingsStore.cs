@@ -46,6 +46,33 @@ public class SettingsStore
         set { lock (_lock) { _data.ElevenLabsVoiceId = value; Save(); } }
     }
 
+    /// <summary>
+    /// Speech recognition: "whisper:base", "whisper:small", "whisper:large-turbo" (local, free)
+    /// or "assemblyai" (cloud, needs a key).
+    /// </summary>
+    public string SpeechRecognitionChoice
+    {
+        get { lock (_lock) return _data.SpeechRecognitionChoice; }
+        set { lock (_lock) { _data.SpeechRecognitionChoice = value; Save(); } }
+    }
+
+    /// <summary>
+    /// Voice: "piper:thorsten-medium", "piper:thorsten-high" (local, free),
+    /// "windows" (built-in Windows voice) or "elevenlabs" (cloud, needs a key).
+    /// </summary>
+    public string VoiceChoice
+    {
+        get { lock (_lock) return _data.VoiceChoice; }
+        set { lock (_lock) { _data.VoiceChoice = value; Save(); } }
+    }
+
+    /// <summary>Speaking rate multiplier, 1.0 = normal.</summary>
+    public double SpeakingRate
+    {
+        get { lock (_lock) return _data.SpeakingRate; }
+        set { lock (_lock) { _data.SpeakingRate = value; Save(); } }
+    }
+
     public bool OnboardingComplete
     {
         get { lock (_lock) return _data.OnboardingComplete; }
@@ -130,6 +157,15 @@ public class SettingsStore
         // API tier users are allowed to synthesize. Library voices (like the
         // previous default) require a paid plan and 402 at runtime.
         public string ElevenLabsVoiceId { get; set; } = "pNInz6obpgDQGcFmaJgB";
+
+        [JsonPropertyName("speechRecognitionChoice")]
+        public string SpeechRecognitionChoice { get; set; } = "whisper:small";
+
+        [JsonPropertyName("voiceChoice")]
+        public string VoiceChoice { get; set; } = "piper:thorsten-medium";
+
+        [JsonPropertyName("speakingRate")]
+        public double SpeakingRate { get; set; } = 1.05;
 
         [JsonPropertyName("onboardingComplete")]
         public bool OnboardingComplete { get; set; }

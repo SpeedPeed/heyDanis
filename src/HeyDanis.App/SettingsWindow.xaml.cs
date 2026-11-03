@@ -28,7 +28,7 @@ public partial class SettingsWindow : Window
 
         if (isFirstRun)
         {
-            HeaderText.Text = "Welcome to heyDanis \u2014 let\u2019s set up your API keys";
+            HeaderText.Text = "Willkommen bei heyDanis! Trag deinen Anthropic-Key ein, dann kann es losgehen.";
         }
 
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -128,13 +128,13 @@ public partial class SettingsWindow : Window
             case TestState.Success:
                 btn.Content = "\u2713";
                 btn.Foreground = (Brush)FindResource("Success");
-                btn.ToolTip = "Key is valid";
+                btn.ToolTip = "Key funktioniert";
                 btn.IsEnabled = true;
                 break;
             case TestState.Failure:
                 btn.Content = "\u2717";
                 btn.Foreground = (Brush)FindResource("Failure");
-                btn.ToolTip = errorMessage ?? "Check your key";
+                btn.ToolTip = errorMessage ?? "Key prüfen";
                 btn.IsEnabled = true;
                 break;
         }

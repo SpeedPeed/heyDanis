@@ -50,6 +50,14 @@ public class FirstRunFlowTests : IDisposable
     }
 
     [Fact]
+    public void HasRequiredKeys_TrueWithOnlyAnthropicKeyWhenSpeechIsLocal()
+    {
+        _secrets.Write(SecretsStore.AnthropicApiKey, "sk-test");
+
+        Assert.True(App.App.HasRequiredKeys(_secrets, _settings));
+    }
+
+    [Fact]
     public void HasRequiredKeys_TrueWhenAllAnthropicKeysPresent()
     {
         _settings.LlmProvider = "anthropic";
@@ -64,6 +72,7 @@ public class FirstRunFlowTests : IDisposable
     public void HasRequiredKeys_FalseWhenLlmKeyPresentButAssemblyAiMissing()
     {
         _settings.LlmProvider = "anthropic";
+        _settings.SpeechRecognitionChoice = "assemblyai";
         _secrets.Write(SecretsStore.AnthropicApiKey, "sk-test");
         // AssemblyAI key missing.
         _secrets.Write(SecretsStore.ElevenLabsApiKey, "el-test");
@@ -75,6 +84,7 @@ public class FirstRunFlowTests : IDisposable
     public void HasRequiredKeys_FalseWhenLlmKeyPresentButElevenLabsMissing()
     {
         _settings.LlmProvider = "anthropic";
+        _settings.VoiceChoice = "elevenlabs";
         _secrets.Write(SecretsStore.AnthropicApiKey, "sk-test");
         _secrets.Write(SecretsStore.AssemblyAiApiKey, "aai-test");
         // ElevenLabs key missing.
@@ -93,8 +103,9 @@ public class FirstRunFlowTests : IDisposable
         vm.ValidateRequiredFields();
 
         Assert.NotNull(vm.AnthropicKeyError);
-        Assert.NotNull(vm.AssemblyAiKeyError);
-        Assert.NotNull(vm.ElevenLabsKeyError);
+        // Local speech is the default, so no cloud speech keys are required.
+        Assert.Null(vm.AssemblyAiKeyError);
+        Assert.Null(vm.ElevenLabsKeyError);
     }
 
     [Fact]
@@ -120,6 +131,8 @@ public class FirstRunFlowTests : IDisposable
         // LLM key present, but AssemblyAI missing.
         _secrets.Write(SecretsStore.AnthropicApiKey, "sk-test");
         _secrets.Write(SecretsStore.ElevenLabsApiKey, "el-test");
+        _settings.SpeechRecognitionChoice = "assemblyai";
+        _settings.VoiceChoice = "elevenlabs";
 
         var vm = new SettingsViewModel(_secrets, _settings);
         vm.SelectedProvider = "anthropic";

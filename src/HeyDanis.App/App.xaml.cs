@@ -10,6 +10,7 @@ using HeyDanis.Audio;
 using HeyDanis.Capture;
 using HeyDanis.Companion;
 using HeyDanis.Hotkey;
+using HeyDanis.LocalSpeech;
 using HeyDanis.Overlay;
 
 namespace HeyDanis.App;
@@ -30,6 +31,12 @@ public partial class App : Application
     private SettingsStore? _settingsStore;
     private SecretsStore? _secretsStore;
     private PointingSmokeWindow? _pointingSmokeWindow;
+
+    // Local speech models are expensive to load, so the Whisper transcriber is kept
+    // across settings changes as long as the user keeps the same model.
+    private readonly LocalModelStore _localModelStore = new();
+    private WhisperLocalTranscriber? _whisperTranscriber;
+    private string? _whisperTranscriberModelId;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -233,18 +240,111 @@ public partial class App : Application
         return new AnthropicDirectClient(apiKey, model: _settingsStore!.LlmModel);
     }
 
-    private AssemblyAiStreamingTranscriber BuildTranscriber()
+    private ISpeechTranscriber BuildTranscriber()
     {
-        var key = _secretsStore!.Read(SecretsStore.AssemblyAiApiKey) ?? "";
-        return new AssemblyAiStreamingTranscriber(key);
+        var choice = SettingsViewModel.NormalizeChoice(
+            _settingsStore!.SpeechRecognitionChoice,
+            SettingsViewModel.SpeechRecognitionChoices,
+            SettingsViewModel.DefaultSpeechRecognitionId);
+
+        if (choice == SettingsViewModel.AssemblyAiSpeechRecognitionId)
+        {
+            _companionViewModel!.SpeechRecognitionStatus = "AssemblyAI (Cloud)";
+            var key = _secretsStore!.Read(SecretsStore.AssemblyAiApiKey) ?? "";
+            return new AssemblyAiStreamingTranscriber(key);
+        }
+
+        var modelChoice = WhisperModelChoice.FromId(choice.Replace("whisper:", ""));
+        if (_whisperTranscriber is null || _whisperTranscriberModelId != modelChoice.Id)
+        {
+            _whisperTranscriber?.Dispose();
+            _whisperTranscriber = new WhisperLocalTranscriber(_localModelStore, modelChoice);
+            _whisperTranscriberModelId = modelChoice.Id;
+        }
+
+        var transcriber = _whisperTranscriber;
+        var modelName = modelChoice.DisplayName.Split(" (")[0];
+        if (!transcriber.IsReady)
+        {
+            _companionViewModel!.SpeechRecognitionStatus = $"{modelName} – wird geladen …";
+            var progress = new Progress<ModelDownloadProgress>(report =>
+                _companionViewModel!.SpeechRecognitionStatus = report.Percent is { } percent
+                    ? $"{modelName} – Download {percent} %"
+                    : $"{modelName} – wird geladen …");
+            _ = WarmUpLocalModelAsync(
+                () => transcriber.EnsureLoadedAsync(progress),
+                status => _companionViewModel!.SpeechRecognitionStatus = status,
+                $"{modelName} – bereit (lokal)",
+                "Spracherkennung");
+        }
+        else
+        {
+            _companionViewModel!.SpeechRecognitionStatus = $"{modelName} – bereit (lokal)";
+        }
+        return transcriber;
     }
 
-    private ElevenLabsTtsClient BuildTtsClient()
+    private ITextToSpeechClient BuildTtsClient()
     {
-        var key = _secretsStore!.Read(SecretsStore.ElevenLabsApiKey) ?? "";
-        var voiceId = _settingsStore!.ElevenLabsVoiceId;
+        var choice = SettingsViewModel.NormalizeChoice(
+            _settingsStore!.VoiceChoice,
+            SettingsViewModel.VoiceChoices,
+            SettingsViewModel.DefaultVoiceId);
         var outputDeviceId = _settingsStore.SpeakerDeviceId;
-        return new ElevenLabsTtsClient(key, voiceId, outputDeviceId);
+        var speakingRate = _settingsStore.SpeakingRate;
+
+        if (choice == SettingsViewModel.ElevenLabsVoiceChoiceId)
+        {
+            _companionViewModel!.VoiceStatus = "ElevenLabs (Cloud)";
+            var key = _secretsStore!.Read(SecretsStore.ElevenLabsApiKey) ?? "";
+            return new ElevenLabsTtsClient(key, _settingsStore.ElevenLabsVoiceId, outputDeviceId);
+        }
+
+        var windowsVoice = new WindowsVoiceSpeechClient(outputDeviceId, speakingRate);
+        if (choice == "windows")
+        {
+            _companionViewModel!.VoiceStatus = $"Windows-Stimme: {windowsVoice.SelectedVoiceName}";
+            return windowsVoice;
+        }
+
+        var voiceChoice = PiperVoiceChoice.FromId(choice.Replace("piper:", ""));
+        var piper = new PiperLocalSpeechClient(_localModelStore, voiceChoice, (float)speakingRate, outputDeviceId);
+        var voiceName = voiceChoice.DisplayName.Split(" (")[0];
+        _companionViewModel!.VoiceStatus = $"{voiceName} – wird geladen (solange Windows-Stimme)";
+        var progress = new Progress<ModelDownloadProgress>(report =>
+            _companionViewModel!.VoiceStatus = report.Percent is { } percent
+                ? $"{voiceName} – Download {percent} % (solange Windows-Stimme)"
+                : $"{voiceName} – wird geladen (solange Windows-Stimme)");
+        _ = WarmUpLocalModelAsync(
+            () => piper.EnsureLoadedAsync(progress),
+            status => _companionViewModel!.VoiceStatus = status,
+            $"{voiceName} – bereit (lokal)",
+            "Stimme");
+        return new FallbackSpeechClient(piper, windowsVoice);
+    }
+
+    /// <summary>
+    /// Downloads/loads a local model in the background and reports the result in the
+    /// panel. Failures (usually no internet on first start) are shown, not thrown —
+    /// the model is retried automatically the next time the user talks.
+    /// </summary>
+    private async Task WarmUpLocalModelAsync(
+        Func<Task> loadAsync,
+        Action<string> setStatus,
+        string readyStatus,
+        string modelKindForErrors)
+    {
+        try
+        {
+            await loadAsync();
+            await Dispatcher.InvokeAsync(() => setStatus(readyStatus));
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write($"[LOCAL] {modelKindForErrors} konnte nicht geladen werden", ex);
+            await Dispatcher.InvokeAsync(() =>
+                setStatus($"{modelKindForErrors}: Laden fehlgeschlagen – Internet prüfen, wird beim nächsten Sprechen erneut versucht"));
+        }
     }
 
     /// <summary>
@@ -307,14 +407,17 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Checks whether the Anthropic key and both audio keys are present in the SecretsStore.
-    /// (The audio keys stop being required once local Whisper/Piper land in M3.)
+    /// Checks whether the Anthropic key is present, plus the key of any cloud speech
+    /// service the user picked. With the default local Whisper/Piper no other key is needed.
     /// </summary>
     internal static bool HasRequiredKeys(SecretsStore secrets, SettingsStore settings)
     {
+        var needsAssemblyAiKey = settings.SpeechRecognitionChoice == SettingsViewModel.AssemblyAiSpeechRecognitionId;
+        var needsElevenLabsKey = settings.VoiceChoice == SettingsViewModel.ElevenLabsVoiceChoiceId;
+
         return secrets.Exists(SecretsStore.AnthropicApiKey)
-            && secrets.Exists(SecretsStore.AssemblyAiApiKey)
-            && secrets.Exists(SecretsStore.ElevenLabsApiKey);
+            && (!needsAssemblyAiKey || secrets.Exists(SecretsStore.AssemblyAiApiKey))
+            && (!needsElevenLabsKey || secrets.Exists(SecretsStore.ElevenLabsApiKey));
     }
 
     private void NormalizeAnthropicModelSettings()
@@ -555,6 +658,9 @@ public partial class App : Application
             try { _companionManager.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2)); } catch { }
             _companionManager = null;
         }
+
+        _whisperTranscriber?.Dispose();
+        _whisperTranscriber = null;
 
         // 3. Dispose overlay manager.
         _overlayManager?.Dispose();

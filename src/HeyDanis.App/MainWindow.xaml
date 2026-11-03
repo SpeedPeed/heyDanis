@@ -174,12 +174,12 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Width="32" Height="32" Background="{StaticResource SurfaceBackground}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" CornerRadius="8">
                         <Grid>
-                            <Polygon Points="10,7 10,25 24,16" Fill="{StaticResource TextPrimary}" />
+                            <Image Source="Assets/heydanis.ico" Width="24" Height="24" />
                         </Grid>
                     </Border>
                     <StackPanel Margin="12,0,0,0">
                         <TextBlock Text="heyDanis" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
-                        <TextBlock Text="Local voice companion" FontSize="12" Foreground="{StaticResource TextTertiary}" Margin="0,2,0,0" />
+                        <TextBlock Text="Dein KI-Buddy" FontSize="12" Foreground="{StaticResource TextTertiary}" Margin="0,2,0,0" />
                     </StackPanel>
                     <Border Background="#052E16" BorderBrush="#14532D" BorderThickness="1" CornerRadius="999" Padding="9,3" Margin="16,0,0,0" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
@@ -190,14 +190,14 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="Settings" Style="{StaticResource ActionButton}" Margin="0,0,8,0" Click="SettingsButton_Click" />
-                    <Button Content="Quit" Style="{StaticResource PrimaryButton}" Click="QuitButton_Click" />
+                    <Button Content="Einstellungen" Style="{StaticResource ActionButton}" Margin="0,0,8,0" Click="SettingsButton_Click" />
+                    <Button Content="Beenden" Style="{StaticResource PrimaryButton}" Click="QuitButton_Click" />
                 </StackPanel>
             </Grid>
         </Border>
 
         <TabControl Background="{StaticResource AppBackground}" BorderThickness="0" Margin="24">
-            <TabItem Header="Overview">
+            <TabItem Header="Übersicht">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -206,25 +206,37 @@
 
                     <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0,0,10,0">
                         <StackPanel>
-                            <TextBlock Text="Runtime" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
-                            <TextBlock Text="Current model, permissions, and voice shortcut." FontSize="13" Foreground="{StaticResource TextTertiary}" Margin="0,5,0,18" />
+                            <TextBlock Text="Status" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
+                            <TextBlock Text="Modell, Sprache, Kosten und Berechtigungen." FontSize="13" Foreground="{StaticResource TextTertiary}" Margin="0,5,0,18" />
 
                             <Border Height="1" Background="{StaticResource BorderSubtle}" Margin="0,0,0,14" />
 
                             <Grid Margin="0,0,0,12">
-                                <TextBlock Text="Model" Foreground="{StaticResource TextTertiary}" />
+                                <TextBlock Text="Modell" Foreground="{StaticResource TextTertiary}" />
                                 <TextBlock Text="{Binding LlmModelDisplay}" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" HorizontalAlignment="Right" />
                             </Grid>
                             <Grid Margin="0,0,0,12">
-                                <TextBlock Text="Push-to-talk" Foreground="{StaticResource TextTertiary}" />
+                                <TextBlock Text="Kosten diesen Monat" Foreground="{StaticResource TextTertiary}" />
+                                <TextBlock Text="{Binding MonthlyCostDisplay}" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" HorizontalAlignment="Right" />
+                            </Grid>
+                            <Grid Margin="0,0,0,12">
+                                <TextBlock Text="Spracherkennung" Foreground="{StaticResource TextTertiary}" />
+                                <TextBlock Text="{Binding SpeechRecognitionStatus}" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" Margin="120,0,0,0" />
+                            </Grid>
+                            <Grid Margin="0,0,0,12">
+                                <TextBlock Text="Stimme" Foreground="{StaticResource TextTertiary}" />
+                                <TextBlock Text="{Binding VoiceStatus}" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" Margin="120,0,0,0" />
+                            </Grid>
+                            <Grid Margin="0,0,0,12">
+                                <TextBlock Text="Sprechen (halten)" Foreground="{StaticResource TextTertiary}" />
                                 <TextBlock Text="{Binding PushToTalkShortcutDisplay}" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" HorizontalAlignment="Right" />
                             </Grid>
                             <Grid Margin="0,0,0,12">
-                                <TextBlock Text="Microphone" Foreground="{StaticResource TextTertiary}" />
+                                <TextBlock Text="Mikrofon" Foreground="{StaticResource TextTertiary}" />
                                 <TextBlock Text="{Binding MicrophonePermissionDisplay}" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" HorizontalAlignment="Right" />
                             </Grid>
                             <Grid>
-                                <TextBlock Text="Screen capture" Foreground="{StaticResource TextTertiary}" />
+                                <TextBlock Text="Bildschirmaufnahme" Foreground="{StaticResource TextTertiary}" />
                                 <TextBlock Text="{Binding ScreenCapturePermissionDisplay}" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" HorizontalAlignment="Right" />
                             </Grid>
 
@@ -232,8 +244,8 @@
 
                             <Grid>
                                 <StackPanel Margin="0,0,74,0">
-                                    <TextBlock Text="Gamer mode" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" />
-                                    <TextBlock Text="Hide heyDanis's cursor while moving. AI callouts can still appear after you talk." Foreground="{StaticResource TextTertiary}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                    <TextBlock Text="Gamer-Modus" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" />
+                                    <TextBlock Text="Blendet den Buddy-Cursor beim Bewegen aus. Nach einer Frage kann heyDanis trotzdem Kreise und Pfeile einblenden." Foreground="{StaticResource TextTertiary}" TextWrapping="Wrap" Margin="0,4,0,0" />
                                 </StackPanel>
                                 <ToggleButton HorizontalAlignment="Right"
                                               VerticalAlignment="Center"
@@ -247,9 +259,9 @@
 
                     <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="10,0,0,0">
                         <StackPanel>
-                            <TextBlock Text="Knowledge Store" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
-                            <TextBlock Text="Markdown and text files appended to each turn." FontSize="13" Foreground="{StaticResource TextTertiary}" Margin="0,5,0,18" />
-                            <TextBlock Text="Local folder" FontSize="12" FontWeight="Medium" Foreground="{StaticResource TextTertiary}" Margin="0,0,0,6" />
+                            <TextBlock Text="Wissensspeicher" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
+                            <TextBlock Text="Text- und Markdown-Dateien (z. B. Schulnotizen), die bei jeder Frage mitgeschickt werden. Achtung: Große Dateien erhöhen die Kosten pro Frage." FontSize="13" Foreground="{StaticResource TextTertiary}" Margin="0,5,0,18" />
+                            <TextBlock Text="Lokaler Ordner" FontSize="12" FontWeight="Medium" Foreground="{StaticResource TextTertiary}" Margin="0,0,0,6" />
                             <TextBox x:Name="KnowledgePathBox" Style="{StaticResource DarkTextBox}" IsReadOnly="True" TextWrapping="Wrap" Margin="0,0,0,14" Foreground="{StaticResource TextSecondary}" />
                             <TextBlock x:Name="KnowledgeSummaryText" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" />
                         </StackPanel>
@@ -257,21 +269,21 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Master Prompt">
+            <TabItem Header="Buddy-Prompt">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     <StackPanel Margin="0,0,0,14">
-                        <TextBlock Text="Master Prompt" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
-                        <TextBlock Text="The base prompt heyDanis sends before adding local knowledge files." Foreground="{StaticResource TextTertiary}" Margin="0,4,0,0" />
+                        <TextBlock Text="Buddy-Prompt" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
+                        <TextBlock Text="Die Grundanweisung, die heyDanis bei jeder Frage an Claude schickt (vor dem Wissensspeicher)." Foreground="{StaticResource TextTertiary}" Margin="0,4,0,0" />
                     </StackPanel>
                     <TextBox x:Name="MasterPromptBox" Grid.Row="1" Style="{StaticResource CodeTextBox}" IsReadOnly="True" AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Knowledge">
+            <TabItem Header="Wissen">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="320" />
@@ -280,12 +292,12 @@
 
                     <DockPanel Grid.Column="0" Margin="0,0,14,0">
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
-                            <Button Content="Add File" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="AddKnowledgeFile_Click" />
-                            <Button Content="Folder" Style="{StaticResource ActionButton}" Click="OpenKnowledgeFolder_Click" />
+                            <Button Content="Datei hinzufügen" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="AddKnowledgeFile_Click" />
+                            <Button Content="Ordner" Style="{StaticResource ActionButton}" Click="OpenKnowledgeFolder_Click" />
                         </StackPanel>
                         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
-                            <Button Content="Refresh" Style="{StaticResource ActionButton}" Margin="0,0,8,0" Click="RefreshKnowledge_Click" />
-                            <Button Content="Remove" Style="{StaticResource ActionButton}" Click="RemoveKnowledgeFile_Click" />
+                            <Button Content="Aktualisieren" Style="{StaticResource ActionButton}" Margin="0,0,8,0" Click="RefreshKnowledge_Click" />
+                            <Button Content="Entfernen" Style="{StaticResource ActionButton}" Click="RemoveKnowledgeFile_Click" />
                         </StackPanel>
                         <ListBox x:Name="KnowledgeFilesList" Background="{StaticResource SurfaceBackground}" Foreground="{StaticResource TextPrimary}" BorderBrush="{StaticResource BorderSubtle}" BorderThickness="1" Padding="4" SelectionChanged="KnowledgeFilesList_SelectionChanged" DisplayMemberPath="Name" />
                     </DockPanel>
@@ -295,7 +307,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        <TextBlock x:Name="SelectedKnowledgeTitle" Text="Select a knowledge file" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" Margin="0,0,0,10" />
+                        <TextBlock x:Name="SelectedKnowledgeTitle" Text="Wähle eine Datei aus" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" Margin="0,0,0,10" />
                         <TextBox x:Name="KnowledgePreviewBox" Grid.Row="1" Style="{StaticResource CodeTextBox}" IsReadOnly="True" AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
                     </Grid>
                 </Grid>

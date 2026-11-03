@@ -43,6 +43,8 @@ public class SettingsViewModelTests : IDisposable
     {
         var vm = new SettingsViewModel(_secrets, _settings);
         vm.SelectedProvider = "anthropic";
+        vm.SelectedSpeechRecognitionId = SettingsViewModel.AssemblyAiSpeechRecognitionId;
+        vm.AnthropicApiKey = "sk-test";
         // No assemblyai key.
         vm.ElevenLabsApiKey = "el-test";
 
@@ -54,6 +56,8 @@ public class SettingsViewModelTests : IDisposable
     {
         var vm = new SettingsViewModel(_secrets, _settings);
         vm.SelectedProvider = "anthropic";
+        vm.SelectedVoiceId = SettingsViewModel.ElevenLabsVoiceChoiceId;
+        vm.AnthropicApiKey = "sk-test";
         vm.AssemblyAiApiKey = "aai-test";
         // No elevenlabs key.
 
@@ -83,6 +87,44 @@ public class SettingsViewModelTests : IDisposable
         vm.ElevenLabsApiKey = "el-test";
 
         Assert.False(vm.CanSave);
+    }
+
+    [Fact]
+    public void CanSave_TrueWithOnlyAnthropicKeyWhenSpeechIsLocal()
+    {
+        var vm = new SettingsViewModel(_secrets, _settings);
+        vm.AnthropicApiKey = "sk-test";
+
+        Assert.Equal(SettingsViewModel.DefaultSpeechRecognitionId, vm.SelectedSpeechRecognitionId);
+        Assert.Equal(SettingsViewModel.DefaultVoiceId, vm.SelectedVoiceId);
+        Assert.False(vm.ShowAssemblyAiKey);
+        Assert.False(vm.ShowElevenLabsKey);
+        Assert.True(vm.CanSave);
+    }
+
+    [Fact]
+    public void Save_PersistsSpeechChoices()
+    {
+        var vm = new SettingsViewModel(_secrets, _settings);
+        vm.AnthropicApiKey = "sk-test";
+        vm.SelectedSpeechRecognitionId = "whisper:base";
+        vm.SelectedVoiceId = "windows";
+        vm.SpeakingRate = 1.3;
+
+        vm.Save();
+
+        Assert.Equal("whisper:base", _settings.SpeechRecognitionChoice);
+        Assert.Equal("windows", _settings.VoiceChoice);
+        Assert.Equal(1.3, _settings.SpeakingRate, 3);
+    }
+
+    [Fact]
+    public void UnknownSpeechChoice_FallsBackToDefault()
+    {
+        var vm = new SettingsViewModel(_secrets, _settings);
+        vm.SelectedVoiceId = "does-not-exist";
+
+        Assert.Equal(SettingsViewModel.DefaultVoiceId, vm.SelectedVoiceId);
     }
 
     // -- Model list tests --
@@ -295,9 +337,9 @@ public class SettingsViewModelTests : IDisposable
     [Fact]
     public void FriendlyError_500_MentionsServiceIssues()
     {
-        var msg = SettingsViewModel.FriendlyError("z.ai", 500);
-        Assert.Contains("z.ai", msg);
-        Assert.Contains("issues", msg, StringComparison.OrdinalIgnoreCase);
+        var msg = SettingsViewModel.FriendlyError("Anthropic", 500);
+        Assert.Contains("Anthropic", msg);
+        Assert.Contains("Probleme", msg, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

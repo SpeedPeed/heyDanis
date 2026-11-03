@@ -47,3 +47,12 @@ public interface ITextToSpeechClient : IDisposable
     /// <summary>Stops any playback immediately (used when the user starts talking again).</summary>
     void StopPlayback();
 }
+
+/// <summary>
+/// Thrown when a speech service can't be used yet — typically a local model that is
+/// still downloading. The message is written for the user and shown as-is.
+/// </summary>
+public class SpeechServiceNotReadyException : Exception
+{
+    public SpeechServiceNotReadyException(string message) : base(message) { }
+}

@@ -35,6 +35,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private string _selectedMicrophoneDeviceId = AudioDevices.DefaultDeviceId;
     private string _selectedSpeakerDeviceId = AudioDevices.DefaultDeviceId;
     private bool _gamerModeEnabled;
+    private string _selectedSpeechRecognitionId = DefaultSpeechRecognitionId;
+    private string _selectedVoiceId = DefaultVoiceId;
+    private double _speakingRate = 1.05;
 
     // True when the field shows the saved placeholder instead of the real key.
     private bool _anthropicKeyIsSaved;
@@ -129,6 +132,85 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             _gamerModeEnabled = value;
             OnPropertyChanged();
         }
+    }
+
+    // -- Speech (recognition + voice) --
+
+    public const string DefaultSpeechRecognitionId = "whisper:small";
+    public const string DefaultVoiceId = "piper:thorsten-medium";
+    public const string AssemblyAiSpeechRecognitionId = "assemblyai";
+    public const string ElevenLabsVoiceChoiceId = "elevenlabs";
+
+    public static IReadOnlyList<ModelChoice> SpeechRecognitionChoices { get; } = new[]
+    {
+        new ModelChoice("whisper:small", "Lokal – Whisper Small (gratis, empfohlen)"),
+        new ModelChoice("whisper:base", "Lokal – Whisper Base (gratis, schneller, ungenauer)"),
+        new ModelChoice("whisper:large-turbo", "Lokal – Whisper Large Turbo (gratis, sehr genau, braucht starken PC)"),
+        new ModelChoice(AssemblyAiSpeechRecognitionId, "Cloud – AssemblyAI (ca. 0,15 $/Stunde, Key nötig)"),
+    };
+
+    public static IReadOnlyList<ModelChoice> VoiceChoices { get; } = new[]
+    {
+        new ModelChoice("piper:thorsten-medium", "Lokal – Thorsten (männlich, gratis, empfohlen)"),
+        new ModelChoice("piper:thorsten-high", "Lokal – Thorsten HQ (männlich, gratis, natürlicher)"),
+        new ModelChoice("windows", "Windows-Stimme (gratis, kein Download, robotischer)"),
+        new ModelChoice(ElevenLabsVoiceChoiceId, "Cloud – ElevenLabs (Abo, Key nötig)"),
+    };
+
+    public string SelectedSpeechRecognitionId
+    {
+        get => _selectedSpeechRecognitionId;
+        set
+        {
+            var normalized = NormalizeChoice(value, SpeechRecognitionChoices, DefaultSpeechRecognitionId);
+            if (_selectedSpeechRecognitionId == normalized) return;
+            _selectedSpeechRecognitionId = normalized;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ShowAssemblyAiKey));
+            OnPropertyChanged(nameof(CanSave));
+        }
+    }
+
+    public string SelectedVoiceId
+    {
+        get => _selectedVoiceId;
+        set
+        {
+            var normalized = NormalizeChoice(value, VoiceChoices, DefaultVoiceId);
+            if (_selectedVoiceId == normalized) return;
+            _selectedVoiceId = normalized;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ShowElevenLabsKey));
+            OnPropertyChanged(nameof(CanSave));
+        }
+    }
+
+    /// <summary>1.0 = normal speed.</summary>
+    public double SpeakingRate
+    {
+        get => _speakingRate;
+        set
+        {
+            var clamped = Math.Round(Math.Clamp(value, 0.7, 1.6), 2);
+            if (Math.Abs(_speakingRate - clamped) < 0.001) return;
+            _speakingRate = clamped;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>The AssemblyAI key field is only shown (and required) when AssemblyAI is chosen.</summary>
+    public bool ShowAssemblyAiKey => _selectedSpeechRecognitionId == AssemblyAiSpeechRecognitionId;
+
+    /// <summary>The ElevenLabs fields are only shown (and required) when ElevenLabs is chosen.</summary>
+    public bool ShowElevenLabsKey => _selectedVoiceId == ElevenLabsVoiceChoiceId;
+
+    public static string NormalizeChoice(string? value, IReadOnlyList<ModelChoice> choices, string fallback)
+    {
+        foreach (var choice in choices)
+        {
+            if (choice.Value == value) return value!;
+        }
+        return fallback;
     }
 
     // -- Provider / Model --
@@ -343,13 +425,13 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
 
 
-        if (!HasKey(_assemblyAiApiKey, _assemblyAiKeyIsSaved))
-            AssemblyAiKeyError = "Required";
+        if (ShowAssemblyAiKey && !HasKey(_assemblyAiApiKey, _assemblyAiKeyIsSaved))
+            AssemblyAiKeyError = "Pflichtfeld, solange AssemblyAI ausgewählt ist";
         else
             AssemblyAiKeyError = null;
 
-        if (!HasKey(_elevenLabsApiKey, _elevenLabsKeyIsSaved))
-            ElevenLabsKeyError = "Required";
+        if (ShowElevenLabsKey && !HasKey(_elevenLabsApiKey, _elevenLabsKeyIsSaved))
+            ElevenLabsKeyError = "Pflichtfeld, solange ElevenLabs ausgewählt ist";
         else
             ElevenLabsKeyError = null;
     }
@@ -357,8 +439,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     // -- Save enablement --
 
     /// <summary>
-    /// Save is enabled when the required keys for the selected provider are entered
-    /// (or were previously saved), plus both audio keys are required.
+    /// Save is enabled when the Anthropic key is entered (or saved), plus the key of
+    /// any cloud speech service the user selected.
     /// </summary>
     public bool CanSave
     {
@@ -366,8 +448,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         {
             bool hasLlmKey = HasKey(_anthropicApiKey, _anthropicKeyIsSaved);
 
-            bool hasAudioKeys = HasKey(_assemblyAiApiKey, _assemblyAiKeyIsSaved)
-                             && HasKey(_elevenLabsApiKey, _elevenLabsKeyIsSaved);
+            // Cloud speech keys are only needed when the user picked that cloud service.
+            bool hasAudioKeys = (!ShowAssemblyAiKey || HasKey(_assemblyAiApiKey, _assemblyAiKeyIsSaved))
+                             && (!ShowElevenLabsKey || HasKey(_elevenLabsApiKey, _elevenLabsKeyIsSaved));
 
             return hasLlmKey && hasAudioKeys;
         }
@@ -399,6 +482,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         _settingsStore.MicrophoneDeviceId = _selectedMicrophoneDeviceId;
         _settingsStore.SpeakerDeviceId = _selectedSpeakerDeviceId;
         _settingsStore.GamerModeEnabled = _gamerModeEnabled;
+        _settingsStore.SpeechRecognitionChoice = _selectedSpeechRecognitionId;
+        _settingsStore.VoiceChoice = _selectedVoiceId;
+        _settingsStore.SpeakingRate = _speakingRate;
 
         SettingsSaved?.Invoke(this, EventArgs.Empty);
     }
@@ -528,6 +614,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         _selectedMicrophoneDeviceId = ResolveSavedDeviceId(_settingsStore.MicrophoneDeviceId, MicrophoneDevices);
         _selectedSpeakerDeviceId = ResolveSavedDeviceId(_settingsStore.SpeakerDeviceId, SpeakerDevices);
         _gamerModeEnabled = _settingsStore.GamerModeEnabled;
+        _selectedSpeechRecognitionId = NormalizeChoice(_settingsStore.SpeechRecognitionChoice, SpeechRecognitionChoices, DefaultSpeechRecognitionId);
+        _selectedVoiceId = NormalizeChoice(_settingsStore.VoiceChoice, VoiceChoices, DefaultVoiceId);
+        _speakingRate = Math.Clamp(_settingsStore.SpeakingRate, 0.7, 1.6);
 
         // Pre-populate saved-key placeholders.
         if (_secretsStore.Exists(SecretsStore.AnthropicApiKey))
@@ -565,18 +654,18 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     internal static string FriendlyError(string service, int statusCode) => statusCode switch
     {
-        401 => $"Couldn't verify your {service} key \u2014 check that you pasted it correctly.",
-        403 => $"Your {service} key doesn't have the required permissions.",
-        429 => $"{service} is rate-limiting this key \u2014 wait a moment and try again.",
-        >= 500 => $"{service} seems to be having issues right now \u2014 try again in a minute.",
-        _ => $"Couldn't reach {service} (HTTP {statusCode}) \u2014 check your key and internet connection.",
+        401 => $"Der {service}-Key stimmt nicht \u2014 prüf, ob du ihn vollständig eingefügt hast.",
+        403 => $"Der {service}-Key hat nicht die nötigen Rechte.",
+        429 => $"{service} bremst gerade (zu viele Anfragen) \u2014 kurz warten und nochmal probieren.",
+        >= 500 => $"{service} hat gerade Probleme \u2014 in einer Minute nochmal probieren.",
+        _ => $"{service} nicht erreichbar (HTTP {statusCode}) \u2014 Key und Internet prüfen.",
     };
 
     internal static string FriendlyError(string service, Exception ex) => ex switch
     {
-        HttpRequestException => $"Couldn't reach {service} \u2014 check your internet connection.",
-        TaskCanceledException => $"{service} didn't respond in time \u2014 try again.",
-        _ => $"Something went wrong testing {service} \u2014 please try again or check your setup.",
+        HttpRequestException => $"{service} nicht erreichbar \u2014 prüf deine Internetverbindung.",
+        TaskCanceledException => $"{service} hat nicht rechtzeitig geantwortet \u2014 nochmal probieren.",
+        _ => $"Beim Testen von {service} ist etwas schiefgelaufen \u2014 nochmal probieren.",
     };
 
     internal static string ErrorCategory(int statusCode) => statusCode switch

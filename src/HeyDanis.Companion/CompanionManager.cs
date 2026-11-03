@@ -303,12 +303,23 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         {
             return;
         }
+        catch (SpeechServiceNotReadyException notReady)
+        {
+            // Local Whisper model still downloading/loading — the message is user-facing.
+            DebugLog.Write($"Transcription not ready: {notReady.Message}");
+            await _dispatcher.InvokeAsync(() =>
+            {
+                _viewModel.LastError = notReady.Message;
+                _viewModel.VoiceState = VoiceState.Idle;
+            });
+            return;
+        }
         catch (Exception ex) when (IsTranscriptionAuthError(ex))
         {
             DebugLog.Write("Transcription auth error (AssemblyAI key missing or invalid)", ex);
             await _dispatcher.InvokeAsync(() =>
             {
-                _viewModel.LastError = "Your AssemblyAI key is missing or invalid. Open Settings to fix.";
+                _viewModel.LastError = "Dein AssemblyAI-Key fehlt oder stimmt nicht. Öffne die Einstellungen, um ihn zu korrigieren.";
                 _viewModel.VoiceState = VoiceState.Idle;
                 OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
             });
@@ -319,7 +330,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             DebugLog.Write("Transcription start failed", ex);
             await _dispatcher.InvokeAsync(() =>
             {
-                _viewModel.LastError = $"Couldn't start transcription \u2014 check your internet connection and AssemblyAI key. ({ex.Message})";
+                _viewModel.LastError = $"Spracherkennung konnte nicht starten \u2014 prüf Internet bzw. Einstellungen. ({ex.Message})";
                 _viewModel.VoiceState = VoiceState.Idle;
             });
             return;
@@ -361,7 +372,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
 
             await _dispatcher.InvokeAsync(() =>
             {
-                _viewModel.LastError = $"Couldn't start recording \u2014 check that your microphone is connected and allowed in Windows Settings. ({ex.Message})";
+                _viewModel.LastError = $"Aufnahme konnte nicht starten \u2014 ist das Mikrofon angeschlossen und in den Windows-Einstellungen erlaubt? ({ex.Message})";
                 _viewModel.VoiceState = VoiceState.Idle;
             });
         }
@@ -415,7 +426,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                 DebugLog.Write("[VOICE] final transcript empty: returning to idle without LLM request");
                 await _dispatcher.InvokeAsync(() =>
                 {
-                    _viewModel.LastError = "I didn't catch any speech. Hold the shortcut while speaking, then release.";
+                    _viewModel.LastError = "Ich hab nichts verstanden. Halte die Tasten gedrückt, während du sprichst, und lass dann los.";
                     _viewModel.VoiceState = VoiceState.Idle;
                 });
                 return;
@@ -431,7 +442,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             session.Dispose();
             await _dispatcher.InvokeAsync(() =>
             {
-                _viewModel.LastError = "Couldn't transcribe your speech \u2014 check your internet connection or your AssemblyAI key in Settings.";
+                _viewModel.LastError = "Deine Sprache konnte nicht erkannt werden \u2014 probier es nochmal.";
                 _viewModel.VoiceState = VoiceState.Idle;
             });
         }
@@ -659,7 +670,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                 DebugLog.Write("LLM key error in pipeline", httpEx);
                 await _dispatcher.InvokeAsync(() =>
                 {
-                    _viewModel.LastError = "Your API key is missing or invalid. Open Settings to fix.";
+                    _viewModel.LastError = "Dein Anthropic-Key fehlt oder stimmt nicht. Öffne die Einstellungen, um ihn zu korrigieren.";
                     OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
                 });
             }
@@ -669,7 +680,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                 DebugLog.Write("Response pipeline HTTP error", httpEx);
                 await _dispatcher.InvokeAsync(() =>
                 {
-                    _viewModel.LastError = "Couldn't get a response \u2014 check your internet connection and try again.";
+                    _viewModel.LastError = "Keine Antwort von Claude \u2014 prüf deine Internetverbindung und probier es nochmal.";
                 });
             }
             catch (Exception ex) when (ex is not OperationCanceledException and not HttpRequestException)
@@ -678,7 +689,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                 DebugLog.Write("Response pipeline unhandled error", ex);
                 await _dispatcher.InvokeAsync(() =>
                 {
-                    _viewModel.LastError = "Something went wrong \u2014 try again, and if it keeps happening, check Settings.";
+                    _viewModel.LastError = "Da ist was schiefgelaufen \u2014 probier es nochmal. Wenn es öfter passiert, schau in die Einstellungen.";
                 });
             }
 

@@ -36,6 +36,7 @@
     <ProjectReference Include="..\HeyDanis.Overlay\HeyDanis.Overlay.csproj" />
     <ProjectReference Include="..\HeyDanis.Api\HeyDanis.Api.csproj" />
     <ProjectReference Include="..\HeyDanis.Pointing\HeyDanis.Pointing.csproj" />
+    <ProjectReference Include="..\HeyDanis.LocalSpeech\HeyDanis.LocalSpeech.csproj" />
   </ItemGroup>
 
 </Project>
