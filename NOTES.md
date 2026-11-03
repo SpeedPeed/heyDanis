@@ -95,6 +95,12 @@ Vom PC übernehmbar: Prompts, Pointing-Protokoll (JSON), Kostenlogik.
 - **Verteilung:** GitHub Actions baut die APK, Installation per Sideload (kein Play Store, gratis).
 - Kein iPhone-Support geplant (Apple erlaubt kein Overlay/fremde Screenshots).
 
+## Updates beim Nutzer
+- Nutzer hat **langsames Internet**. CI baut zusätzlich `heyDanis-UPDATE-klein` (~0,8 MB, nur
+  heyDanis' eigene Dateien). Dem Nutzer immer sagen, **ob das kleine Update reicht** oder ob
+  sich NuGet-Pakete geändert haben (dann volles Paket `heyDanis-win-x64`, ~85 MB).
+- Idee für M6: eingebauter Updater, der nur geänderte Dateien von GitHub Releases lädt.
+
 ## Hinweise für neue Sessions
 - Upstream-Code zum Nachschauen: `git clone --depth 1 https://github.com/rickkdev/clicky`
   (Windows-Code in `windows/`) bzw. https://github.com/farzaa/clicky (macOS-Original).

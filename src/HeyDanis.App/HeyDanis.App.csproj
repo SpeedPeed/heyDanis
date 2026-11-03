@@ -28,6 +28,14 @@
   </ItemGroup>
 
 
+  <!--
+    Whisper.net ships native libraries for x86/arm64 too; the published win-x64 app only
+    needs its own architecture, so drop the others to keep downloads small.
+  -->
+  <Target Name="RemoveForeignWhisperRuntimes" AfterTargets="Publish" Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <RemoveDir Directories="$(PublishDir)runtimes\win-arm64;$(PublishDir)runtimes\win-x86" />
+  </Target>
+
   <ItemGroup>
     <ProjectReference Include="..\HeyDanis.Companion\HeyDanis.Companion.csproj" />
     <ProjectReference Include="..\HeyDanis.Audio\HeyDanis.Audio.csproj" />

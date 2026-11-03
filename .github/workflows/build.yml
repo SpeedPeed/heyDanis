@@ -42,6 +42,25 @@ jobs:
           path: publish/win-x64/
           retention-days: 30
 
+      # Small update package: only heyDanis' own files (~1 MB instead of ~85 MB).
+      # Extract it over an existing full install; the full package is only needed
+      # again when a library/dependency changes.
+      - name: Collect small update package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force publish/update | Out-Null
+          Get-ChildItem publish/win-x64 -File |
+            Where-Object { $_.Name -like 'heyDanis*' } |
+            Copy-Item -Destination publish/update
+          Get-ChildItem publish/update | Format-Table Name, Length
+
+      - name: Upload small update package
+        uses: actions/upload-artifact@v4
+        with:
+          name: heyDanis-UPDATE-klein
+          path: publish/update/
+          retention-days: 30
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

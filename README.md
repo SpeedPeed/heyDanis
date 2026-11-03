@@ -38,6 +38,14 @@ heyDanis ist auf möglichst geringe Kosten ausgelegt:
    heyDanis die Sprachmodelle (~260 MB) einmalig herunter – der Fortschritt steht im
    Hauptfenster.
 
+### Updates (klein, ~1 MB)
+
+Für Updates reicht meistens das Artefakt **heyDanis-UPDATE-klein**: heyDanis beenden,
+ZIP herunterladen und **über den bestehenden heyDanis-Ordner** entpacken (Dateien
+ersetzen). Das große Paket **heyDanis-win-x64** brauchst du nur beim ersten Mal – oder
+wenn in den Release-Notizen steht, dass sich Bibliotheken geändert haben.
+Die Sprachmodelle in `%APPDATA%\heyDanis\models` werden nie erneut geladen.
+
 API-Keys werden mit Windows DPAPI verschlüsselt unter `%APPDATA%\heyDanis` gespeichert
 und nie hochgeladen.
 
