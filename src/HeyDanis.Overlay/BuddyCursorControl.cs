@@ -13,12 +13,12 @@ namespace HeyDanis.Overlay;
 /// and can fly to a target point.
 /// Mirrors <c>BlueCursorView</c> from the Mac reference (OverlayWindow.swift).
 ///
-/// The triangle is 16×16 DIPs, colored #3380FF with a glow (DropShadowEffect).
+/// The triangle is 16×16 DIPs, colored #FF6A2B (heyDanis orange) with a glow (DropShadowEffect).
 /// FlyTo animates along a quadratic Bézier arc with smoothstep easing,
 /// scale pulsing, and rotation toward the direction of travel.
 /// After arrival, a speech bubble pops in and the cursor lingers ~3 s before fading out.
 /// </summary>
-public sealed class BlueCursorControl : IDisposable
+public sealed class BuddyCursorControl : IDisposable
 {
     // ── Constants matching Mac reference ──────────────────────────────
 
@@ -26,8 +26,8 @@ public sealed class BlueCursorControl : IDisposable
     internal const double TriangleSize = 16.0;
     internal const double FollowScale = 0.85;
 
-    /// <summary>Blue accent color #3380FF.</summary>
-    internal static readonly Color AccentColor = Color.FromRgb(0x33, 0x80, 0xFF);
+    /// <summary>heyDanis accent color #FF6A2B (orange), matching the app icon.</summary>
+    internal static readonly Color AccentColor = Color.FromRgb(0xFF, 0x6A, 0x2B);
 
     /// <summary>Static glow blur radius.</summary>
     private const double BaseGlowRadius = 8.0;
@@ -102,7 +102,7 @@ public sealed class BlueCursorControl : IDisposable
     private double _currentLingerSeconds = LingerSeconds;
     private double _currentFadeOutSeconds = FadeOutSeconds;
 
-    public BlueCursorControl()
+    public BuddyCursorControl()
     {
         // Build the triangle shape (equilateral, pointing up)
         var height = TriangleSize * Math.Sqrt(3.0) / 2.0;

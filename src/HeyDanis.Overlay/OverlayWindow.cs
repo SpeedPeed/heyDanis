@@ -11,7 +11,7 @@ namespace HeyDanis.Overlay;
 /// for a single monitor. Mirrors <c>OverlayWindow</c> from the Mac reference
 /// implementation (OverlayWindow.swift).
 ///
-/// Hosts a <see cref="BlueCursorControl"/> for rendering the animated blue cursor.
+/// Hosts a <see cref="BuddyCursorControl"/> for rendering the animated blue cursor.
 /// </summary>
 public class OverlayWindow : Window
 {
@@ -26,7 +26,7 @@ public class OverlayWindow : Window
     public double DpiScaleY { get; }
 
     /// <summary>The blue cursor control hosted on this overlay.</summary>
-    public BlueCursorControl BlueCursor { get; }
+    public BuddyCursorControl BlueCursor { get; }
 
     /// <summary>The exact-point debug crosshair hosted on this overlay.</summary>
     public DebugCrosshairControl DebugCrosshair { get; }
@@ -61,7 +61,7 @@ public class OverlayWindow : Window
         Height = dipBounds.Height;
 
         // Host the blue cursor control on a Canvas that fills the overlay
-        BlueCursor = new BlueCursorControl();
+        BlueCursor = new BuddyCursorControl();
         DebugCrosshair = new DebugCrosshairControl();
         DrawingOverlay = new DrawingOverlayControl();
         var canvas = new Canvas
@@ -117,7 +117,7 @@ public class OverlayWindow : Window
             NativeMethods.SWP_SHOWWINDOW);
     }
 
-    /// <summary>Disposes the hosted BlueCursorControl when the window closes.</summary>
+    /// <summary>Disposes the hosted BuddyCursorControl when the window closes.</summary>
     protected override void OnClosed(EventArgs e)
     {
         BlueCursor.Dispose();

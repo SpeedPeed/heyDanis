@@ -215,28 +215,26 @@ public sealed class TrayIconManager : IDisposable
     }
 
     /// <summary>
-    /// Creates a simple blue triangle icon matching the HeyDanis branding.
+    /// Loads the heyDanis icon embedded in the app assembly. Falls back to a
+    /// simple drawn orange speech bubble if the resource can't be read.
     /// </summary>
     private static Icon CreateDefaultIcon()
     {
+        var assembly = typeof(TrayIconManager).Assembly;
+        using var iconStream = assembly.GetManifestResourceStream("HeyDanis.App.Assets.heydanis.ico");
+        if (iconStream is not null)
+        {
+            return new Icon(iconStream, new System.Drawing.Size(32, 32));
+        }
+
         const int size = 32;
         using var bitmap = new Bitmap(size, size);
         using var g = Graphics.FromImage(bitmap);
-
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.Clear(Color.Transparent);
-
-        // Blue triangle cursor shape
-        var points = new[]
-        {
-            new PointF(6, 4),
-            new PointF(6, 28),
-            new PointF(26, 16),
-        };
-
-        using var brush = new SolidBrush(Color.FromArgb(255, 59, 130, 246));
-        g.FillPolygon(brush, points);
-
+        using var brush = new SolidBrush(Color.FromArgb(255, 255, 106, 43));
+        g.FillEllipse(brush, 2, 2, 28, 24);
+        g.FillPolygon(brush, new[] { new PointF(8, 22), new PointF(6, 31), new PointF(16, 24) });
         return System.Drawing.Icon.FromHandle(bitmap.GetHicon());
     }
 

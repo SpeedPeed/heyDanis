@@ -5,9 +5,12 @@
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\heydanis.ico</ApplicationIcon>
+    <AssemblyName>heyDanis</AssemblyName>
+    <RootNamespace>HeyDanis.App</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>2.0.4</Version>
+    <Version>0.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,10 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="appsettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <EmbeddedResource Include="Assets\heydanis.ico" LogicalName="HeyDanis.App.Assets.heydanis.ico" />
+    <Resource Include="Assets\heydanis.ico" />
   </ItemGroup>
+
 
   <ItemGroup>
     <ProjectReference Include="..\HeyDanis.Companion\HeyDanis.Companion.csproj" />

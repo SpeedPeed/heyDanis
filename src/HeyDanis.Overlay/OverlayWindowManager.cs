@@ -21,7 +21,7 @@ public sealed class OverlayWindowManager : IDisposable
     private OverlayPointTarget? _lastSequenceTarget;
     private bool _gamerModeEnabled;
     private bool _disposed;
-    // Must exceed BlueCursorControl's max flight + linger + fade path so
+    // Must exceed BuddyCursorControl's max flight + linger + fade path so
     // PointingCompleted can advance multi-target sequences before fallback cleanup.
     private const double PointingReturnSeconds = 6.5;
     private const double SequenceLingerSeconds = 0.75;

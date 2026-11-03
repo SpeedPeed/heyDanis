@@ -16,13 +16,15 @@
 #endif
 
 #define AppName "heyDanis"
-#define AppVersion "2.0.4"
+#ifndef AppVersion
+  #define AppVersion "0.1.0"
+#endif
 #define AppPublisher "heyDanis"
-#define AppExeName "HeyDanis.App.exe"
-#define AppURL "https://github.com/julianjear/makesomething-mac-app"
+#define AppExeName "heyDanis.exe"
+#define AppURL "https://github.com/SpeedPeed/heyDanis"
 
 [Setup]
-AppId={{F3A2B1C4-5D6E-7F8A-9B0C-1D2E3F4A5B6C}
+AppId={{71692C47-640E-4329-99CA-9CBE472E052E}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
@@ -39,13 +41,13 @@ SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=lowest
 ; Use PerMonitorV2 DPI awareness for the installer itself
-SetupIconFile=compiler:SetupClassicIcon.ico
+SetupIconFile=..\src\HeyDanis.App\Assets\heydanis.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 ArchitecturesInstallIn64BitMode=x64compatible
 ArchitecturesAllowed=x64compatible
 
 [Languages]
-Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 
 [Tasks]
 Name: "startmenu"; Description: "Create a &Start Menu shortcut"; GroupDescription: "Additional shortcuts:"

@@ -144,7 +144,7 @@ public class DpiHelperTests
         Assert.Equal(600.0, dips.Y, 6);
     }
 
-    // ── Overlay-local DIP coordinate computation (simulates BlueCursorControl.FlyTo) ──
+    // ── Overlay-local DIP coordinate computation (simulates BuddyCursorControl.FlyTo) ──
 
     [Fact]
     public void OverlayLocalDips_At150Percent_TargetMapsCorrectly()

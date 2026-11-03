@@ -31,8 +31,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$windowsRoot = Join-Path $repoRoot "windows"
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$windowsRoot = $repoRoot
 $solutionPath = Join-Path $windowsRoot "HeyDanis.sln"
 $appProjectPath = Join-Path $windowsRoot "src\HeyDanis.App\HeyDanis.App.csproj"
 $publishDir = Join-Path $windowsRoot "publish\$Runtime"
