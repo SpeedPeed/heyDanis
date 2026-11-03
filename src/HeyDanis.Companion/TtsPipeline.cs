@@ -16,11 +16,21 @@ internal sealed class TtsPipeline : IAsyncDisposable
     private readonly CancellationTokenSource _pipelineCts;
     private readonly Task _consumerTask;
     private readonly Action<string>? _onSpeakStarted;
+    private readonly Action<Exception>? _onSpeakFailed;
 
-    public TtsPipeline(ITextToSpeechClient ttsClient, CancellationToken externalCt, Action<string>? onSpeakStarted = null)
+    /// <param name="onSpeakFailed">
+    /// Called when a sentence can't be spoken (no audio device, voice broken …). The turn
+    /// keeps going — the answer is still shown as text in the bubble.
+    /// </param>
+    public TtsPipeline(
+        ITextToSpeechClient ttsClient,
+        CancellationToken externalCt,
+        Action<string>? onSpeakStarted = null,
+        Action<Exception>? onSpeakFailed = null)
     {
         _ttsClient = ttsClient;
         _onSpeakStarted = onSpeakStarted;
+        _onSpeakFailed = onSpeakFailed;
         _sentenceChannel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
         {
             SingleReader = true,
@@ -68,7 +78,14 @@ internal sealed class TtsPipeline : IAsyncDisposable
         {
             ct.ThrowIfCancellationRequested();
             _onSpeakStarted?.Invoke(sentence);
-            await _ttsClient.SpeakAsync(sentence, ct).ConfigureAwait(false);
+            try
+            {
+                await _ttsClient.SpeakAsync(sentence, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _onSpeakFailed?.Invoke(ex);
+            }
         }
     }
 

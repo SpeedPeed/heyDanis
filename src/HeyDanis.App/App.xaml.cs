@@ -164,6 +164,17 @@ public partial class App : Application
         // Build and start the CompanionManager with current keys/config.
         BuildAndStartCompanionManager();
 
+        // Errors are shown in the bubble next to the mouse too: the main window is hidden
+        // while heyDanis takes screenshots, so a banner there would go unnoticed.
+        _companionViewModel!.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(CompanionViewModel.LastError)
+                && !string.IsNullOrWhiteSpace(_companionViewModel.LastError))
+            {
+                _overlayManager?.ShowResponseText("Hinweis: " + _companionViewModel.LastError);
+            }
+        };
+
         // Show this month's Claude costs and keep them updated after every answer.
         _companionViewModel!.MonthlyCostDisplay = _usageCostTracker.FormatCurrentMonth();
         _usageCostTracker.Changed += (_, _) => Dispatcher.InvokeAsync(() =>

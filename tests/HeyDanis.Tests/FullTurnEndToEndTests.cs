@@ -204,7 +204,10 @@ public sealed class FullTurnEndToEndTests
         harness.Manager.SendTranscriptToClaudeWithScreenshot("say something");
         await harness.Manager.CurrentResponseTask!.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.Equal("Da ist was schiefgelaufen - probier es nochmal. Wenn es öfter passiert, schau in die Einstellungen.", Normalize(vm.LastError));
+        // A broken speaker must not swallow the answer: the turn completes, the answer
+        // stays in the bubble/history, and the user learns why nothing was read aloud.
+        Assert.StartsWith("Vorlesen hat nicht geklappt", vm.LastError);
+        Assert.Contains("speaker failed", vm.LastError);
         Assert.Equal(VoiceState.Idle, vm.VoiceState);
 
         harness.Shutdown();

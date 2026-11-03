@@ -205,6 +205,39 @@ public sealed class OverlayWindowManager : IDisposable
     }
 
     /// <summary>
+    /// Shows the answer as a speech bubble next to the mouse on the monitor the mouse is on.
+    /// Must be called on the WPF dispatcher thread.
+    /// </summary>
+    public void ShowResponseText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        HideResponseText();
+
+        var overlay = ResolveCursorOverlay();
+        if (overlay is null) return;
+
+        var cursor = GetCursorPoint();
+        var anchor = new System.Windows.Point(
+            (cursor.X - overlay.MonitorBounds.X) / overlay.DpiScaleX,
+            (cursor.Y - overlay.MonitorBounds.Y) / overlay.DpiScaleY);
+        var overlaySize = new System.Windows.Size(
+            overlay.MonitorBounds.Width / overlay.DpiScaleX,
+            overlay.MonitorBounds.Height / overlay.DpiScaleY);
+
+        overlay.ReassertTopmost();
+        overlay.ResponseBubble.Show(text.Trim(), anchor, overlaySize);
+    }
+
+    /// <summary>Hides any answer bubble (e.g. when the user starts talking again).</summary>
+    public void HideResponseText()
+    {
+        foreach (var overlay in _overlays)
+        {
+            overlay.ResponseBubble.Hide();
+        }
+    }
+
+    /// <summary>
     /// Flies the blue cursor to the center of the cursor's monitor.
     /// </summary>
     public void TestFlyToCenter()

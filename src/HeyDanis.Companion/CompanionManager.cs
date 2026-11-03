@@ -287,12 +287,13 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         _pressTimestamp = DateTime.UtcNow;
         DebugLog.Write("[VOICE] shortcut pressed: recording started");
 
-        // Hide the overlay cursor so it doesn't appear in the capture.
+        // Hide the overlay cursor and the last answer bubble so they don't appear in the capture.
         if (_overlayManager is not null)
         {
             _dispatcher.Invoke(() =>
             {
                 _overlayManager.SuspendCursorFollowing();
+                _overlayManager.HideResponseText();
             });
         }
 
@@ -509,6 +510,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             var firstLlmTokenSeen = false;
             var firstTtsEnqueueSeen = false;
             var firstTtsPlaybackSeen = false;
+            Exception? speakFailure = null;
 
             try
             {
@@ -565,6 +567,10 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                         firstTtsPlaybackSeen = true;
                         timing.Mark("first-tts-playback-start", $"sentenceChars={sentence.Length}");
                     }
+                }, speakError =>
+                {
+                    DebugLog.Write("TTS playback failed", speakError);
+                    speakFailure = speakError;
                 });
                 var ttsStarted = false;
 
@@ -582,6 +588,13 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                         firstLlmTokenSeen,
                         firstTtsEnqueueSeen,
                         firstTtsPlaybackSeen).ConfigureAwait(false);
+
+                    if (speakFailure is not null && !ct.IsCancellationRequested)
+                    {
+                        var failureMessage = speakFailure.Message;
+                        await _dispatcher.InvokeAsync(() =>
+                            _viewModel.LastError = $"Vorlesen hat nicht geklappt \u2014 prüf in den Einstellungen, ob die richtigen Lautsprecher gewählt sind. ({failureMessage})");
+                    }
                     return;
                 }
 
@@ -666,6 +679,8 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                     DebugLog.Write("[POINT] parse: no directive found");
                 }
 
+                await ShowAnswerBubbleAsync(spokenText).ConfigureAwait(false);
+
                 // Save this exchange to conversation history (with point tags stripped
                 // so they don't confuse future context â€” mirrors Mac behavior)
                 _conversationHistory.Add(new Message(transcript, spokenText));
@@ -729,6 +744,14 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                 {
                     _viewModel.LastError = "Da ist was schiefgelaufen \u2014 probier es nochmal. Wenn es öfter passiert, schau in die Einstellungen.";
                 });
+            }
+
+            if (speakFailure is not null && !ct.IsCancellationRequested)
+            {
+                // The answer is still visible in the bubble; tell the user why it wasn't read aloud.
+                var failureMessage = speakFailure.Message;
+                await _dispatcher.InvokeAsync(() =>
+                    _viewModel.LastError = $"Vorlesen hat nicht geklappt \u2014 prüf in den Einstellungen, ob die richtigen Lautsprecher gewählt sind. ({failureMessage})");
             }
 
             if (!ct.IsCancellationRequested)
@@ -820,8 +843,10 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         }
 
         var cleaned = result.SpokenText.Trim();
+        DebugLog.Write($"[VOICE] answer chars={cleaned.Length}");
         if (!string.IsNullOrWhiteSpace(cleaned))
         {
+            await ShowAnswerBubbleAsync(cleaned).ConfigureAwait(false);
             if (!firstTtsEnqueueSeen)
             {
                 firstTtsEnqueueSeen = true;
@@ -845,6 +870,13 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         {
             await _dispatcher.InvokeAsync(() => _viewModel.VoiceState = VoiceState.Idle);
         }
+    }
+
+    /// <summary>Shows the answer as text next to the mouse (readable even without sound).</summary>
+    private async Task ShowAnswerBubbleAsync(string answer)
+    {
+        if (_overlayManager is null || string.IsNullOrWhiteSpace(answer)) return;
+        await _dispatcher.InvokeAsync(() => _overlayManager.ShowResponseText(answer));
     }
 
     private void ClearCaptureOnPress()

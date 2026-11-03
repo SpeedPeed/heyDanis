@@ -34,7 +34,7 @@ public static class AudioDevices
     {
         var list = new List<DeviceInfo>
         {
-            new(DefaultDeviceId, "System default"),
+            new(DefaultDeviceId, "Windows-Standard"),
         };
 
         try

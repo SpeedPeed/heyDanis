@@ -34,6 +34,9 @@ public class OverlayWindow : Window
     /// <summary>Temporary gamer-mode annotation renderer.</summary>
     public DrawingOverlayControl DrawingOverlay { get; }
 
+    /// <summary>Speech bubble showing the answer as text next to the mouse.</summary>
+    public ResponseBubbleControl ResponseBubble { get; }
+
     public OverlayWindow(Rectangle monitorBounds, double dpiScaleX = 1.0, double dpiScaleY = 1.0)
     {
         MonitorBounds = monitorBounds;
@@ -64,6 +67,7 @@ public class OverlayWindow : Window
         BlueCursor = new BuddyCursorControl();
         DebugCrosshair = new DebugCrosshairControl();
         DrawingOverlay = new DrawingOverlayControl();
+        ResponseBubble = new ResponseBubbleControl();
         var canvas = new Canvas
         {
             IsHitTestVisible = false
@@ -71,6 +75,7 @@ public class OverlayWindow : Window
         canvas.Children.Add(DebugCrosshair.Visual);
         canvas.Children.Add(DrawingOverlay.Visual);
         canvas.Children.Add(BlueCursor.Visual);
+        canvas.Children.Add(ResponseBubble.Visual);
         Content = canvas;
     }
 
