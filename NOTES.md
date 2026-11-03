@@ -25,7 +25,9 @@ Schritt-für-Schritt-Zeigen, Kostenanzeige.
 **Offene Rückmeldungen vom Nutzer (zuerst abfragen):**
 - Claude-CLI: **installiert, Version 2.1.317** ✅. Offen: `echo $env:ANTHROPIC_API_KEY` (soll leer sein)
   und ob `claude` einmal gestartet + mit Team-Konto angemeldet wurde.
-- Ergebnis **Monitor-Test** und **Windows-Skalierung + Auflösung** beider Monitore.
+- **Monitor-Test funktioniert** ✅ (Mixed-DPI-Fix bestätigt). Monitor 1: 1920×1080 @ 100 %, Monitor 2
+  (Zeichentablett): 1920×1080 @ 150 %. Zeigen auf Monitor 2 noch nicht explizit getestet.
+- Nutzer kann sich gerade nicht in der CLI anmelden → Tafel-Test verschoben.
 - Erster Test der **Tafel** („Zeichne mir den Satz des Pythagoras an die Tafel“, „Zeig mir das in 3D“).
 - Ob kostenpflichtige Upgrades gewünscht sind (A Sonnet nur fürs Zeigen ~3 $/Monat, B Sonnet für alles
   ~8–10 $/Monat, C AssemblyAI-Live-Spracherkennung ~Cent/Monat, D ElevenLabs ~5 $/Monat). Noch nicht
