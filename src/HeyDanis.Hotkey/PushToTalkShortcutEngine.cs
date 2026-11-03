@@ -4,10 +4,15 @@ namespace HeyDanis.Hotkey;
 /// Pure (testable) state machine that turns a stream of low-level key
 /// events into <see cref="ShortcutTransition"/>s for a modifier-only chord.
 ///
-/// Mirrors the modifier-only branch of BuddyPushToTalkShortcut.shortcutTransition
-/// in BuddyDictationManager.swift: the chord is considered "pressed" as long as
-/// every modifier it requires is currently held (superset semantics — extra
-/// modifiers or other keys being down do not matter).
+/// The chord is "pressed" while every modifier it requires is held. Two rules make
+/// it safe on a German keyboard while programming:
+/// <list type="bullet">
+/// <item>"Alt" means the LEFT Alt key only. AltGr (right Alt) is sent by Windows as
+/// a fake left Ctrl + right Alt, so without this rule typing @ € { } [ ] \ | ~ would
+/// trigger push-to-talk.</item>
+/// <item>Pressing any non-modifier key while the chord is held (Strg+Alt+L, Strg+Alt+Entf …)
+/// cancels it — the user wanted a normal shortcut.</item>
+/// </list>
 ///
 /// This class is intentionally free of any Win32 P/Invoke so the transition
 /// logic can be unit-tested without installing a real keyboard hook.
@@ -28,10 +33,15 @@ public sealed class PushToTalkShortcutEngine
 
     private readonly PushToTalkShortcut _chord;
     private bool _ctrl;
-    private bool _alt;
+    private bool _leftAlt;
+    private bool _rightAlt;
     private bool _shift;
     private bool _win;
     private bool _wasPressed;
+
+    // After a cancel we stay quiet until the chord's modifiers are released,
+    // so letting go of Strg+Alt after Strg+Alt+L doesn't start a recording.
+    private bool _suppressedUntilChordReleased;
 
     public PushToTalkShortcutEngine(PushToTalkShortcut chord)
     {
@@ -50,12 +60,24 @@ public sealed class PushToTalkShortcutEngine
     {
         if (!UpdateModifierState(virtualKeyCode, isKeyDown))
         {
-            // Non-modifier keys don't change chord state, but Mac also ignores
-            // them for modifier-only chords (flagsChanged only). Return None.
+            // A real key while the chord is held → it was a normal keyboard shortcut.
+            if (isKeyDown && _wasPressed)
+            {
+                _wasPressed = false;
+                _suppressedUntilChordReleased = true;
+                return ShortcutTransition.Cancelled;
+            }
             return ShortcutTransition.None;
         }
 
         var nowPressed = IsChordSatisfied();
+
+        if (_suppressedUntilChordReleased)
+        {
+            if (!nowPressed)
+                _suppressedUntilChordReleased = false;
+            return ShortcutTransition.None;
+        }
 
         if (nowPressed && !_wasPressed)
         {
@@ -78,8 +100,9 @@ public sealed class PushToTalkShortcutEngine
     /// </summary>
     public void Reset()
     {
-        _ctrl = _alt = _shift = _win = false;
+        _ctrl = _leftAlt = _rightAlt = _shift = _win = false;
         _wasPressed = false;
+        _suppressedUntilChordReleased = false;
     }
 
     private bool UpdateModifierState(int vk, bool down)
@@ -91,8 +114,11 @@ public sealed class PushToTalkShortcutEngine
                 _ctrl = down;
                 return true;
             case VK_LMENU:
+                _leftAlt = down;
+                return true;
             case VK_RMENU:
-                _alt = down;
+                // AltGr. Tracked only so it counts as a modifier (not as "another key").
+                _rightAlt = down;
                 return true;
             case VK_LSHIFT:
             case VK_RSHIFT:
@@ -109,10 +135,11 @@ public sealed class PushToTalkShortcutEngine
 
     private bool IsChordSatisfied() => _chord switch
     {
-        PushToTalkShortcut.ControlAlt => _ctrl && _alt,
-        PushToTalkShortcut.ControlShift => _ctrl && _shift,
-        PushToTalkShortcut.AltShift => _alt && _shift,
-        PushToTalkShortcut.WinAlt => _win && _alt,
+        // AltGr held means the user is typing a special character — never a chord.
+        PushToTalkShortcut.ControlAlt => _ctrl && _leftAlt && !_rightAlt,
+        PushToTalkShortcut.ControlShift => _ctrl && _shift && !_rightAlt,
+        PushToTalkShortcut.AltShift => _leftAlt && _shift && !_rightAlt,
+        PushToTalkShortcut.WinAlt => _win && _leftAlt && !_rightAlt,
         _ => false,
     };
 }

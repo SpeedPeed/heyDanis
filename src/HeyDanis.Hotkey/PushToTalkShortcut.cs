@@ -20,10 +20,10 @@ public static class PushToTalkShortcutExtensions
     /// </summary>
     public static string DisplayName(this PushToTalkShortcut shortcut) => shortcut switch
     {
-        PushToTalkShortcut.ControlAlt => "Ctrl + Alt",
-        PushToTalkShortcut.ControlShift => "Ctrl + Shift",
+        PushToTalkShortcut.ControlAlt => "Strg + Alt (links)",
+        PushToTalkShortcut.ControlShift => "Strg + Shift",
         PushToTalkShortcut.AltShift => "Alt + Shift",
         PushToTalkShortcut.WinAlt => "Win + Alt",
-        _ => "Ctrl + Alt",
+        _ => "Strg + Alt (links)",
     };
 }

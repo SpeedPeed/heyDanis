@@ -234,7 +234,41 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             case ShortcutTransition.Released:
                 HandleReleased();
                 break;
+            case ShortcutTransition.Cancelled:
+                HandleCancelled();
+                break;
         }
+    }
+
+    /// <summary>
+    /// The chord turned out to be part of a normal keyboard shortcut (e.g. Strg+Alt+L):
+    /// throw the recording away without asking Claude and without an error message.
+    /// </summary>
+    private void HandleCancelled()
+    {
+        _viewModel.IsShortcutPressed = false;
+        if (_viewModel.VoiceState != VoiceState.Listening)
+            return;
+
+        DebugLog.Write("[VOICE] shortcut cancelled: another key was pressed, discarding recording");
+        _micCaptureCts?.Cancel();
+        _activeMicCapture?.Dispose();
+        _activeMicCapture = null;
+
+        var session = _activeTranscriptionSession;
+        _activeTranscriptionSession = null;
+        if (session is not null)
+        {
+            _ = Task.Run(async () =>
+            {
+                try { await session.CancelAsync().ConfigureAwait(false); }
+                catch { /* best effort */ }
+                session.Dispose();
+            });
+        }
+
+        ClearCaptureOnPress();
+        _viewModel.VoiceState = VoiceState.Idle;
     }
 
     private void HandlePressed()
