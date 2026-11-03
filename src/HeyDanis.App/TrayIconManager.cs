@@ -79,6 +79,12 @@ public sealed class TrayIconManager : IDisposable
     /// <summary>Raised when the user runs provider timing diagnostics.</summary>
     public event EventHandler? ProviderTimingDiagnosticsRequested;
 
+    /// <summary>Raised when the user wants calibration circles on every monitor.</summary>
+    public event EventHandler? MonitorTestRequested;
+
+    /// <summary>Raised when the user wants the recent log lines on the clipboard (for support).</summary>
+    public event EventHandler? CopyDiagnosticsRequested;
+
     public TrayIconManager()
     {
         _trayIcon = new TaskbarIcon
@@ -100,13 +106,13 @@ public sealed class TrayIconManager : IDisposable
     {
         var menu = new ContextMenu();
 
-        var openItem = new MenuItem { Header = "Open" };
+        var openItem = new MenuItem { Header = "Öffnen" };
         openItem.Click += (_, _) => TrayIconClicked?.Invoke(this, EventArgs.Empty);
 
-        var settingsItem = new MenuItem { Header = "Settings..." };
+        var settingsItem = new MenuItem { Header = "Einstellungen …" };
         settingsItem.Click += (_, _) => SettingsClicked?.Invoke(this, EventArgs.Empty);
 
-        _modelSubmenu = new MenuItem { Header = "Model" };
+        _modelSubmenu = new MenuItem { Header = "Modell" };
 
         var testOverlayItem = BuildOverlayTestSubmenu();
         var desktopSmokeItem = new MenuItem { Header = "Desktop Smoke Test" };
@@ -120,12 +126,20 @@ public sealed class TrayIconManager : IDisposable
             IsEnabled = false,
         };
 
-        var quitItem = new MenuItem { Header = "Quit" };
+        var monitorTestItem = new MenuItem { Header = "Monitor-Test (Kreise)" };
+        monitorTestItem.Click += (_, _) => MonitorTestRequested?.Invoke(this, EventArgs.Empty);
+        var copyDiagnosticsItem = new MenuItem { Header = "Diagnose kopieren" };
+        copyDiagnosticsItem.Click += (_, _) => CopyDiagnosticsRequested?.Invoke(this, EventArgs.Empty);
+
+        var quitItem = new MenuItem { Header = "Beenden" };
         quitItem.Click += (_, _) => Application.Current.Shutdown();
 
         menu.Items.Add(openItem);
         menu.Items.Add(settingsItem);
         menu.Items.Add(_modelSubmenu);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(monitorTestItem);
+        menu.Items.Add(copyDiagnosticsItem);
         menu.Items.Add(testOverlayItem);
         menu.Items.Add(desktopSmokeItem);
         menu.Items.Add(diagnosticsItem);

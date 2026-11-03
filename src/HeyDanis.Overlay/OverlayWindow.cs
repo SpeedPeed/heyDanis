@@ -22,8 +22,12 @@ public class OverlayWindow : Window
     public Rectangle MonitorBounds { get; }
 
     /// <summary>The DPI scale factors for this monitor (1.0 at 100%, 1.5 at 150%, etc.).</summary>
-    public double DpiScaleX { get; }
-    public double DpiScaleY { get; }
+    /// <remarks>
+    /// Updated from the window's real DPI once it sits on its monitor — on mixed-DPI setups the
+    /// value queried before creation can differ from what WPF actually renders with.
+    /// </remarks>
+    public double DpiScaleX { get; private set; }
+    public double DpiScaleY { get; private set; }
 
     /// <summary>The blue cursor control hosted on this overlay.</summary>
     public BuddyCursorControl BlueCursor { get; }
@@ -95,7 +99,51 @@ public class OverlayWindow : Window
                  | NativeMethods.WS_EX_TOOLWINDOW
                  | NativeMethods.WS_EX_NOACTIVATE;
         NativeMethods.SetWindowLong(Hwnd, NativeMethods.GWL_EXSTYLE, exStyle);
+        PlaceOnMonitorInPhysicalPixels();
         ReassertTopmost();
+    }
+
+    /// <summary>
+    /// With monitors at different scaling (e.g. 100 % + 150 %), WPF converts Left/Top/Width/Height
+    /// with the DPI of the monitor the window is created on, so an overlay meant for the second
+    /// monitor ends up shifted or squeezed — the pointer and circles then miss on that monitor.
+    /// Placing the window with physical pixels via Win32 is DPI-independent; afterwards we read
+    /// the DPI WPF really uses for this window.
+    /// </summary>
+    private void PlaceOnMonitorInPhysicalPixels()
+    {
+        NativeMethods.SetWindowPos(
+            Hwnd,
+            NativeMethods.HWND_TOPMOST,
+            MonitorBounds.X,
+            MonitorBounds.Y,
+            MonitorBounds.Width,
+            MonitorBounds.Height,
+            NativeMethods.SWP_NOACTIVATE);
+
+        var dpi = VisualTreeHelper.GetDpi(this);
+        DpiScaleX = dpi.DpiScaleX;
+        DpiScaleY = dpi.DpiScaleY;
+    }
+
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        DpiScaleX = newDpi.DpiScaleX;
+        DpiScaleY = newDpi.DpiScaleY;
+        // WPF resizes the window to its "suggested" rectangle on a DPI change; put it back
+        // exactly over the monitor.
+        if (Hwnd != IntPtr.Zero)
+        {
+            NativeMethods.SetWindowPos(
+                Hwnd,
+                NativeMethods.HWND_TOPMOST,
+                MonitorBounds.X,
+                MonitorBounds.Y,
+                MonitorBounds.Width,
+                MonitorBounds.Height,
+                NativeMethods.SWP_NOACTIVATE);
+        }
     }
 
     /// <summary>

@@ -81,19 +81,20 @@ public partial class TextQuestionWindow : Window
         Close();
     }
 
-    /// <summary>Positions the box just below/right of the mouse, kept inside the screen.</summary>
+    /// <summary>
+    /// Positions the box just below/right of the mouse. Uses physical pixels via Win32 so it
+    /// also lands correctly on a second monitor with a different scaling.
+    /// </summary>
     private void PlaceNearMouse()
     {
         GetCursorPos(out var cursor);
-        var dpi = VisualTreeHelper.GetDpi(this);
-        var left = cursor.X / dpi.DpiScaleX + 16;
-        var top = cursor.Y / dpi.DpiScaleY + 16;
-
-        var screenRight = SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth;
-        var screenBottom = SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight;
-        Left = Math.Min(left, screenRight - Width - 8);
-        Top = Math.Min(top, screenBottom - 140);
+        var hwnd = new WindowInteropHelper(this).Handle;
+        const uint SWP_NOSIZE = 0x0001, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010;
+        SetWindowPos(hwnd, IntPtr.Zero, cursor.X + 16, cursor.Y + 16, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
 
     /// <summary>
     /// Windows only lets the foreground app hand out focus. Attaching to the foreground

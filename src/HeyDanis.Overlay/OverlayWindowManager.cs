@@ -238,6 +238,41 @@ public sealed class OverlayWindowManager : IDisposable
     }
 
     /// <summary>
+    /// Calibration check for multi-monitor setups: draws a labelled circle in the middle and
+    /// near each corner of every monitor. If they don't sit there, the overlay is misplaced.
+    /// </summary>
+    public void ShowMonitorTestCircles()
+    {
+        var annotations = new List<OverlayAnnotationTarget>();
+        for (var index = 0; index < _overlays.Count; index++)
+        {
+            var bounds = _overlays[index].MonitorBounds;
+            var inset = Math.Min(bounds.Width, bounds.Height) * 0.08;
+            var points = new (double X, double Y, string Name)[]
+            {
+                (bounds.X + bounds.Width / 2.0, bounds.Y + bounds.Height / 2.0, $"Monitor {index + 1} Mitte"),
+                (bounds.X + inset, bounds.Y + inset, $"Monitor {index + 1} oben links"),
+                (bounds.Right - inset, bounds.Bottom - inset, $"Monitor {index + 1} unten rechts"),
+            };
+            foreach (var (x, y, name) in points)
+            {
+                annotations.Add(new OverlayAnnotationTarget
+                {
+                    Kind = OverlayAnnotationKind.Circle,
+                    DisplayBounds = bounds,
+                    Label = name,
+                    Point = new System.Windows.Point(x, y),
+                    Radius = 40,
+                });
+            }
+            Logger?.Invoke($"[MONITOR-TEST] overlay {index + 1}: bounds=({bounds.X},{bounds.Y},{bounds.Width},{bounds.Height}) " +
+                           $"dpi=({_overlays[index].DpiScaleX:F2},{_overlays[index].DpiScaleY:F2}) " +
+                           $"windowDip=({_overlays[index].Left:F0},{_overlays[index].Top:F0},{_overlays[index].Width:F0},{_overlays[index].Height:F0})");
+        }
+        DrawAnnotations(annotations);
+    }
+
+    /// <summary>
     /// Flies the blue cursor to the center of the cursor's monitor.
     /// </summary>
     public void TestFlyToCenter()

@@ -125,6 +125,8 @@ public partial class App : Application
         _trayIconManager.OverlayTestRequested += OnOverlayTestRequested;
         _trayIconManager.DesktopSmokeTestRequested += OnDesktopSmokeTestRequested;
         _trayIconManager.ProviderTimingDiagnosticsRequested += OnProviderTimingDiagnosticsRequested;
+        _trayIconManager.MonitorTestRequested += (_, _) => _overlayManager?.ShowMonitorTestCircles();
+        _trayIconManager.CopyDiagnosticsRequested += (_, _) => CopyDiagnosticsToClipboard();
 
         // Register for auto-start on first launch (mirrors SMAppService.mainApp.register).
         AutoStartRegistration.EnsureRegistered();
@@ -535,6 +537,37 @@ public partial class App : Application
                 _companionViewModel.HasScreenCapturePermission = granted;
             }
         });
+    }
+
+    /// <summary>
+    /// Puts the recent, relevant log lines plus monitor info on the clipboard so the user can
+    /// paste them into a chat. The log contains questions and answers but never API keys.
+    /// </summary>
+    private void CopyDiagnosticsToClipboard()
+    {
+        try
+        {
+            var logPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heyDanis", "debug.log");
+            var interesting = new[] { "[POINT]", "[DRAW]", "[TTS]", "[AUDIO]", "[VOICE]", "[DICTATION]", "[TEXT]", "[LOCAL]", "[MONITOR-TEST]", "error", "Error", "failed", "Exception" };
+            var lines = File.Exists(logPath)
+                ? File.ReadLines(logPath).Where(line => interesting.Any(line.Contains)).TakeLast(150).ToList()
+                : new List<string> { "(kein debug.log gefunden)" };
+
+            var monitors = _overlayManager?.Overlays.Select((overlay, index) =>
+                $"Monitor {index + 1}: bounds=({overlay.MonitorBounds.X},{overlay.MonitorBounds.Y},{overlay.MonitorBounds.Width},{overlay.MonitorBounds.Height}) dpi={overlay.DpiScaleX:F2}")
+                ?? Enumerable.Empty<string>();
+
+            var report = $"heyDanis {VersionInfo.Current} Diagnose {DateTime.Now:yyyy-MM-dd HH:mm}\n"
+                + string.Join("\n", monitors) + "\n---\n" + string.Join("\n", lines);
+            Clipboard.SetText(report);
+            _overlayManager?.ShowResponseText("Diagnose ist in der Zwischenablage – einfach im Chat einfügen (Strg+V).");
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Copy diagnostics failed", ex);
+            _overlayManager?.ShowResponseText("Hinweis: Diagnose konnte nicht kopiert werden: " + ex.Message);
+        }
     }
 
     private TextQuestionWindow? _textQuestionWindow;
