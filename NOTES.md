@@ -4,8 +4,12 @@ Persönlicher KI-Buddy für Windows (Klon von HeyClicky). Basis: Windows-Fork
 https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa/clicky).
 
 ## Stand
-- Phase 0 erledigt (Ansprüche geklärt).
-- Phase 1: Architektur erklärt, Plan vorgelegt. **Wartet auf OK.**
+- Phase 0 + 1 erledigt, Plan vom Nutzer freigegeben (direkt auf `main` arbeiten).
+- **M1 erledigt:** Code importiert, Ballast entfernt, umbenannt, eigenes Icon, CI-Build.
+  Kompiliert auf Linux (`-p:EnableWindowsTargeting=true`); Tests laufen nur in GitHub Actions.
+- Aktuell funktioniert die App noch mit **AssemblyAI + ElevenLabs** (Keys nötig) – lokale
+  Whisper/Piper kommen in M3. Texte der Oberfläche sind noch großteils Englisch (→ M3/M6).
+- Als Nächstes: **M2** (Setup beim Nutzer) und **M3** (Kernschleife lokal + Deutsch).
 
 ## Ansprüche (vom Nutzer)
 - OS: Windows
@@ -31,7 +35,9 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
 | TTS | Piper lokal, Stimme „Thorsten“ (de_DE, männlich) | gratis, offline; Fallback Windows-Stimme „Stefan“ |
 | Keys | DPAPI (verschlüsselt im Windows-Benutzerkonto) | nie im Binary, nie in Git |
 | Entfernt | PostHog-Analytics, WinSparkle-Updater, Codex/z.ai/OpenAI, Bridge/Hermes, Mac-Code | unnötig bzw. fremdes Branding |
-| Builds | GitHub Actions (windows-latest) baut .exe/Installer | Nutzer muss nicht selbst kompilieren |
+| Builds | GitHub Actions (windows-latest) baut `heyDanis.exe` als Artefakt | Nutzer muss nicht selbst kompilieren |
+| Branding | Oranges Sprechblasen-Icon (`scripts/make-icon.py`), Cursor #FF6A2B | kein Clicky-Branding |
+| Git | direkt auf `main` | Solo-Projekt, vom Nutzer so gewünscht |
 
 ## Bekannte Risiken / zu prüfen
 - **AltGr = Strg+Alt** auf deutscher Tastatur (@ € { } [ ] \ | ~). Push-to-Talk darf nur auf
@@ -44,9 +50,14 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
 - Codewort-Erkennung braucht unscharfen Abgleich (Whisper schreibt z. B. „Dennis“ statt „Danis“).
 
 ## Meilensteine
-- [ ] M1 Import + Umbenennung + Aufräumen + CI-Build
+- [x] M1 Import + Umbenennung + Aufräumen + CI-Build
 - [ ] M2 Setup beim Nutzer (Key, Mikrofon, Claude Code Login)
 - [ ] M3 Kernschleife: Hotkey → Whisper → Screenshot → Haiku → Piper
 - [ ] M4 Overlay/Zeigen Multi-Monitor, Markierungen, Text-Eingabe, Diktat
 - [ ] M5 Agent-Modus (parallel, Status, Benachrichtigung, Bestätigung)
 - [ ] M6 Persönlichkeit, Extras, Autostart, Installer
+
+## Hinweise für neue Sessions
+- Upstream-Code zum Nachschauen: `git clone --depth 1 https://github.com/rickkdev/clicky`
+  (Windows-Code in `windows/`) bzw. https://github.com/farzaa/clicky (macOS-Original).
+- .NET 8 SDK im Linux-Container: `curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 8.0`
