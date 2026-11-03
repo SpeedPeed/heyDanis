@@ -32,6 +32,12 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
   Piper erzeugte 0 Samples. Gepinnt auf **1.13.8** (nicht upgraden!). Außerdem parallele Downloads
   desselben Modells verhindert, Downloads setzen nach Abbruch fort (HTTP Range).
   Round-Trip-Test Piper → Whisper Base im Container: Text korrekt erkannt.
+- **Dritter M3-Test:** Thorsten spricht ✅, Cursor fliegt ✅, zeigt aber ungenau (Textdatei: nannte
+  Stelle A, zeigte auf B). Maßnahmen: Bildgröße exakt nach Claudes Resize-Regel
+  (`ClaudeImageSizing`, High-Res-Tier 2576/4784), `oversized_image: "error"` + automatischer
+  Fallback auf Standard-Tier, Zoom-Verfeinerung pro Punkt (Einstellung „Genauer zeigen“, Standard an),
+  Antwort wird zuerst gesprochen, Zeiger parallel verfeinert. Ergebnis offen.
+  Falls immer noch ungenau: Option „Zeigen mit Sonnet“ anbieten (teurer).
 - Als Nächstes: Nutzer testet M3 → danach **M4** (Overlay/Zeigen prüfen, Text-Eingabe, Diktat).
 
 ## Ansprüche (vom Nutzer)
