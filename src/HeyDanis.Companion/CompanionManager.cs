@@ -130,7 +130,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         - sonst genau ein punkt.
         - koordinaten sind screenshot-pixel, ursprung oben links im gewählten bild. x nach rechts, y nach unten.
         - screen ist pflicht: die nummer N aus der beschriftung "screen N of M", die direkt VOR dem bild steht, in dem das ziel liegt. die koordinaten gelten nur für dieses bild. liegt das ziel auf dem anderen monitor als die maus, ist screen eben die andere nummer.
-        - bei text-zielen (wörter, fehler): label ist genau das gemeinte wort, zum beispiel "browwser".
+        - label ist der sichtbare text des ziels, exakt so geschrieben wie auf dem bildschirm (auch mit tippfehlern, gleiche groß-/kleinschreibung), zum beispiel "Browwser", "Datei", "Speichern unter". heydanis sucht diesen text per texterkennung und zeigt dann pixelgenau darauf. nur wenn das ziel keinen text hat (reines symbol), beschreib es kurz.
         - bei landkarten: wähle einen punkt innerhalb des gesuchten landes, nie beschriftungen oder nachbarländer.
         - wenn du unsicher bist, nimm kind "none". lieber nicht zeigen als falsch zeigen.
         - confidence muss "high" sein, sonst kind "none".
@@ -934,6 +934,10 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             ? GamerModeStructuredPointingSystemPrompt
             : StructuredPointingSystemPrompt;
 
+        // Windows OCR runs in parallel with Claude (free, local): it gives exact word
+        // positions so pointer and circles can snap onto the text Claude names.
+        _currentTurnOcr = screens.Select(screen => Task.Run(() => ScreenTextRecognizer.RecognizeWordsAsync(screen))).ToArray();
+
         timing.Mark("llm-request-start", $"history={historySnapshot.Count} screens={labeledScreens.Count} protocol={(gamerModeEnabled ? "gamer-drawing" : "structured-pointing")}");
         for (var attempt = 1; ; attempt++)
         {
@@ -965,6 +969,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                 ClaudeImageSizing.CurrentTier = ClaudeImageSizing.Standard;
                 screens = screens.Select(screen => ScreenCapture.ResizeToTier(screen, ClaudeImageSizing.Standard)).ToList();
                 labeledScreens = WithDimensionLabels(screens);
+                _currentTurnOcr = screens.Select(screen => Task.Run(() => ScreenTextRecognizer.RecognizeWordsAsync(screen))).ToArray();
                 responseBuilder.Clear();
             }
         }
@@ -1016,12 +1021,8 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
 
         if (drawingDirectives.Count > 0 && _overlayManager is not null)
         {
-            IReadOnlyList<DrawingDirective> finalDrawings = drawingDirectives;
-            if (_precisePointingEnabled)
-            {
-                finalDrawings = await RefineDrawingDirectivesAsync(drawingDirectives, screens, transcript, ct).ConfigureAwait(false);
-                timing.Mark("drawing-refined", $"drawings={finalDrawings.Count}");
-            }
+            var finalDrawings = await RefineDrawingDirectivesAsync(drawingDirectives, screens, transcript, ct).ConfigureAwait(false);
+            timing.Mark("drawing-refined", $"drawings={finalDrawings.Count}");
             if (ct.IsCancellationRequested) return;
             if (await DispatchDrawingDirectivesAsync(finalDrawings, screens, ct).ConfigureAwait(false))
             {
@@ -1034,11 +1035,8 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             IReadOnlyList<PointDirective> finalDirectives = directives
                 .Select(d => ApplyGeoMapOverrideIfAvailable(transcript, d, screens))
                 .ToArray();
-            if (_precisePointingEnabled)
-            {
-                finalDirectives = await RefinePointDirectivesAsync(finalDirectives, screens, transcript, ct).ConfigureAwait(false);
-                timing.Mark("point-refined", $"points={finalDirectives.Count}");
-            }
+            finalDirectives = await RefinePointDirectivesAsync(finalDirectives, screens, transcript, ct).ConfigureAwait(false);
+            timing.Mark("point-refined", $"points={finalDirectives.Count}");
             if (ct.IsCancellationRequested) return;
             if (await DispatchPointDirectivesAsync(finalDirectives, screens, ct).ConfigureAwait(false))
             {
@@ -1101,7 +1099,8 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         {
             var screen = SelectDirectiveScreen(directive, screens);
             if (screen is null) return directive;
-            var box = await RefineTargetBoxAsync(screen, directive.X, directive.Y, directive.Label, transcript, ct).ConfigureAwait(false);
+            var screenIndex = IndexOfScreen(screen, screens);
+            var box = await ResolveTargetBoxAsync(screenIndex, screen, directive.X, directive.Y, directive.Label, transcript, ct).ConfigureAwait(false);
             if (box is not { } targetBox) return directive;
             return directive with
             {
@@ -1130,7 +1129,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
 
             if (directive.Kind == DrawingDirectiveKind.Circle)
             {
-                var box = await RefineTargetBoxAsync(screen, directive.X, directive.Y, directive.Label, transcript, ct).ConfigureAwait(false);
+                var box = await ResolveTargetBoxAsync(screenIndex, screen, directive.X, directive.Y, directive.Label, transcript, ct).ConfigureAwait(false);
                 if (box is not { } targetBox) return directive;
                 return directive with
                 {
@@ -1140,7 +1139,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                 };
             }
 
-            var tipBox = await RefineTargetBoxAsync(screen, directive.X2, directive.Y2, directive.Label, transcript, ct).ConfigureAwait(false);
+            var tipBox = await ResolveTargetBoxAsync(screenIndex, screen, directive.X2, directive.Y2, directive.Label, transcript, ct).ConfigureAwait(false);
             if (tipBox is not { } arrowTarget) return directive;
             var newTipX = arrowTarget.X + arrowTarget.Width / 2;
             var newTipY = arrowTarget.Y + arrowTarget.Height / 2;
@@ -1155,6 +1154,56 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             };
         })).ConfigureAwait(false);
         return refined;
+    }
+
+    /// <summary>OCR of the current turn's screenshots, one task per screen (same order).</summary>
+    private Task<IReadOnlyList<RecognizedWord>>[] _currentTurnOcr = Array.Empty<Task<IReadOnlyList<RecognizedWord>>>();
+
+    private static readonly TimeSpan OcrWaitTimeout = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// Exact box of the target: first by snapping Claude's label onto OCR-recognized text
+    /// (free, pixel exact — words, buttons, menus); only if that finds nothing and
+    /// "Genauer zeigen" is on, by the zoom request to Claude.
+    /// </summary>
+    private async Task<Rectangle?> ResolveTargetBoxAsync(
+        int screenIndex,
+        CapturedScreen screen,
+        int roughX,
+        int roughY,
+        string label,
+        string transcript,
+        CancellationToken ct)
+    {
+        if (screenIndex >= 0 && screenIndex < _currentTurnOcr.Length)
+        {
+            try
+            {
+                var words = await _currentTurnOcr[screenIndex].WaitAsync(OcrWaitTimeout, ct).ConfigureAwait(false);
+                if (TextTargetMatcher.FindTextTarget(label, roughX, roughY, words) is { } textBox)
+                {
+                    DebugLog.Write($"[POINT] ocr-snap: \"{label}\" rough=({roughX},{roughY}) -> box=({textBox.X},{textBox.Y},{textBox.Width},{textBox.Height}) words={words.Count}");
+                    return textBox;
+                }
+                DebugLog.Write($"[POINT] ocr-snap: no text match for \"{label}\" (words={words.Count})");
+            }
+            catch (Exception ex) when (ex is TimeoutException || ex is not OperationCanceledException)
+            {
+                DebugLog.Write($"[POINT] ocr-snap skipped: {ex.GetType().Name}");
+            }
+        }
+
+        if (!_precisePointingEnabled) return null;
+        return await RefineTargetBoxAsync(screen, roughX, roughY, label, transcript, ct).ConfigureAwait(false);
+    }
+
+    private static int IndexOfScreen(CapturedScreen screen, IReadOnlyList<CapturedScreen> screens)
+    {
+        for (var index = 0; index < screens.Count; index++)
+        {
+            if (ReferenceEquals(screens[index], screen)) return index;
+        }
+        return -1;
     }
 
     /// <summary>Radius of a circle around a (possibly wide) word box: half its width plus some air.</summary>
