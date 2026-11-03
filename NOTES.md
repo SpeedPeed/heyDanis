@@ -23,9 +23,8 @@ Schritt-für-Schritt-Zeigen, Kostenanzeige.
 3. **OCR-Snapping** fürs Markieren (Kreise auf Wörter per Windows-OCR); zuletzt „näher, aber nicht exakt“.
 
 **Offene Rückmeldungen vom Nutzer (zuerst abfragen):**
-- Claude-CLI: Nutzer installiert gerade (PowerShell: `irm https://claude.ai/install.ps1 | iex`, dann
-  `claude` → mit Team-Konto anmelden). Ergebnis von `claude --version` und `echo $env:ANTHROPIC_API_KEY`
-  (soll leer sein) steht aus.
+- Claude-CLI: **installiert, Version 2.1.317** ✅. Offen: `echo $env:ANTHROPIC_API_KEY` (soll leer sein)
+  und ob `claude` einmal gestartet + mit Team-Konto angemeldet wurde.
 - Ergebnis **Monitor-Test** und **Windows-Skalierung + Auflösung** beider Monitore.
 - Erster Test der **Tafel** („Zeichne mir den Satz des Pythagoras an die Tafel“, „Zeig mir das in 3D“).
 - Ob kostenpflichtige Upgrades gewünscht sind (A Sonnet nur fürs Zeigen ~3 $/Monat, B Sonnet für alles
