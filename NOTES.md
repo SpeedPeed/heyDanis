@@ -134,6 +134,17 @@ Vom PC übernehmbar: Prompts, Pointing-Protokoll (JSON), Kostenlogik.
   wenn sich nur Sprach-Pakete geändert haben.
 - Idee für M6: eingebauter Updater, der nur geänderte Dateien von GitHub Releases lädt.
 
+## Neue Anforderung (nach M4): „Kompetenz wie HeyClicky“
+Nutzer war von HeyClicky v. a. von der **Kompetenz und den Möglichkeiten** beeindruckt: Seiten öffnen,
+mit Seiten/Apps interagieren, Overlays erstellen, live Notizfelder öffnen und dort Erklärungen zeichnen,
+sogar 3D-Modelle zum Erklären erzeugen. Vorschlag an Nutzer (Entscheidung offen):
+- **Aktionen**: Websites/Programme/Dateien öffnen, im Web suchen (günstig, Haiku reicht).
+- **Erklär-Tafel**: WebView2-Fenster, Claude erzeugt HTML/SVG/KaTeX/three.js (Zeichnungen, Formeln,
+  3D) – braucht starkes Modell → Sonnet per API (~2–5 Cent/Erklärung) oder Team-Abo über `claude -p`.
+- **Agent-Modus** (M5) über Claude-Code-CLI/Team-Abo für längere Aufgaben im Hintergrund.
+- **App-Steuerung** (klicken/tippen für den Nutzer, Computer Use): teuer + riskant, ganz am Schluss,
+  nur mit Bestätigung.
+
 ## Hinweise für neue Sessions
 - Upstream-Code zum Nachschauen: `git clone --depth 1 https://github.com/rickkdev/clicky`
   (Windows-Code in `windows/`) bzw. https://github.com/farzaa/clicky (macOS-Original).
