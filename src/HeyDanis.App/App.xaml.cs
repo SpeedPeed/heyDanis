@@ -35,6 +35,7 @@ public partial class App : Application
     // Local speech models are expensive to load, so the Whisper transcriber is kept
     // across settings changes as long as the user keeps the same model.
     private readonly LocalModelStore _localModelStore = new();
+    private readonly UsageCostTracker _usageCostTracker = new();
     private WhisperLocalTranscriber? _whisperTranscriber;
     private string? _whisperTranscriberModelId;
 
@@ -163,6 +164,11 @@ public partial class App : Application
         // Build and start the CompanionManager with current keys/config.
         BuildAndStartCompanionManager();
 
+        // Show this month's Claude costs and keep them updated after every answer.
+        _companionViewModel!.MonthlyCostDisplay = _usageCostTracker.FormatCurrentMonth();
+        _usageCostTracker.Changed += (_, _) => Dispatcher.InvokeAsync(() =>
+            _companionViewModel!.MonthlyCostDisplay = _usageCostTracker.FormatCurrentMonth());
+
         // Set the initial model display name on the ViewModel.
         _companionViewModel!.LlmModelDisplay = GetModelDisplayName(
             _settingsStore!.LlmProvider, _settingsStore.LlmModel);
@@ -237,7 +243,10 @@ public partial class App : Application
     {
         NormalizeAnthropicModelSettings();
         var apiKey = _secretsStore!.Read(SecretsStore.AnthropicApiKey) ?? "";
-        return new AnthropicDirectClient(apiKey, model: _settingsStore!.LlmModel);
+        return new AnthropicDirectClient(
+            apiKey,
+            model: _settingsStore!.LlmModel,
+            onUsageReported: _usageCostTracker.Record);
     }
 
     private ISpeechTranscriber BuildTranscriber()
