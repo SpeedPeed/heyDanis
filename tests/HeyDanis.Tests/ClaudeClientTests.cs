@@ -149,4 +149,23 @@ public class ClaudeClientTests
             return Task.FromResult(response);
         }
     }
+
+    [Fact]
+    public void ExtractApiErrorMessage_ReadsAnthropicErrorBody()
+    {
+        var text = "Claude API error (401): {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"}}";
+
+        Assert.Equal("invalid x-api-key", AnthropicDirectClient.ExtractApiErrorMessage(text));
+        Assert.Null(AnthropicDirectClient.ExtractApiErrorMessage("no json here"));
+    }
+
+    [Fact]
+    public void TuningParametersCanBeLeftOut()
+    {
+        var body = AnthropicDirectClient.BuildRequestBody("claude-haiku-5-5", "sys", Array.Empty<object>(), includeTuning: false);
+
+        Assert.False(body.ContainsKey("thinking"));
+        Assert.False(body.ContainsKey("output_config"));
+        Assert.True(AnthropicDirectClient.MentionsTuningParameter("thinking.type: disabled is not supported"));
+    }
 }

@@ -49,7 +49,8 @@ public class SecretsStore
         lock (_lock)
         {
             var dict = LoadDictionary();
-            return dict.TryGetValue(key, out var value) ? value : null;
+            // Trim: keys saved by older versions may carry a pasted space or line break.
+            return dict.TryGetValue(key, out var value) ? value?.Trim() : null;
         }
     }
 

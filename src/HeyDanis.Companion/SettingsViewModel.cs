@@ -270,7 +270,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             _anthropicApiKey = value;
             _anthropicKeyIsSaved = false;
             _anthropicTestState = TestState.None;
-            _anthropicKeyError = null;
+            _anthropicKeyError = DescribeAnthropicKeyFormatProblem(CleanKey(value));
             OnPropertyChanged();
             OnPropertyChanged(nameof(AnthropicKeyIsSaved));
             OnPropertyChanged(nameof(AnthropicTestState));
@@ -353,8 +353,11 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public TestState AnthropicTestState
     {
         get => _anthropicTestState;
-        private set { _anthropicTestState = value; OnPropertyChanged(); OnPropertyChanged(nameof(AnthropicTestError)); }
+        private set { _anthropicTestState = value; OnPropertyChanged(); OnPropertyChanged(nameof(AnthropicTestError)); OnPropertyChanged(nameof(AnthropicTestSucceeded)); }
     }
+
+    /// <summary>True after a successful "Test" — shows a green confirmation under the key field.</summary>
+    public bool AnthropicTestSucceeded => _anthropicTestState == TestState.Success;
 
     public string? AnthropicTestError
     {
@@ -459,13 +462,36 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private static bool HasKey(string key, bool isSaved) =>
         isSaved || !string.IsNullOrWhiteSpace(key);
 
+    /// <summary>
+    /// Removes what often sneaks in when copying a key: spaces, line breaks, quotes.
+    /// </summary>
+    public static string CleanKey(string? key) =>
+        (key ?? "").Trim().Trim('"', '\'', '„', '“').Trim();
+
+    /// <summary>
+    /// Catches the common mix-ups before the user hits "Speichern": a Claude Code /
+    /// subscription login token or some other string instead of a Console API key.
+    /// Returns null when the key looks fine (or is empty).
+    /// </summary>
+    public static string? DescribeAnthropicKeyFormatProblem(string cleanedKey)
+    {
+        if (cleanedKey.Length == 0) return null;
+        if (cleanedKey.StartsWith("sk-ant-oat", StringComparison.Ordinal))
+            return "Das ist ein Claude-Abo-/Claude-Code-Token, kein API-Key. Den API-Key bekommst du auf console.anthropic.com unter „API Keys“ (beginnt mit sk-ant-api).";
+        if (cleanedKey.StartsWith("sk-ant-admin", StringComparison.Ordinal))
+            return "Das ist ein Admin-Key. heyDanis braucht einen normalen API-Key (beginnt mit sk-ant-api).";
+        if (!cleanedKey.StartsWith("sk-ant-", StringComparison.Ordinal))
+            return "Das sieht nicht wie ein Anthropic-API-Key aus. Er beginnt mit sk-ant-api und kommt von console.anthropic.com.";
+        return null;
+    }
+
     // -- Commands --
 
     public void Save()
     {
         // Write keys (only write if the user entered a new value, not the placeholder).
         if (!_anthropicKeyIsSaved && !string.IsNullOrWhiteSpace(_anthropicApiKey))
-            _secretsStore.Write(SecretsStore.AnthropicApiKey, _anthropicApiKey);
+            _secretsStore.Write(SecretsStore.AnthropicApiKey, CleanKey(_anthropicApiKey));
 
 
 
@@ -497,9 +523,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     public async Task TestAnthropicAsync(CancellationToken ct = default)
     {
-        var key = _anthropicKeyIsSaved
+        var key = CleanKey(_anthropicKeyIsSaved
             ? _secretsStore.Read(SecretsStore.AnthropicApiKey) ?? ""
-            : _anthropicApiKey;
+            : _anthropicApiKey);
 
         AnthropicTestState = TestState.Testing;
         AnthropicTestError = null;
@@ -520,7 +546,10 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             }
             else
             {
-                AnthropicTestError = FriendlyError("Anthropic", (int)response.StatusCode);
+                var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var apiMessage = HeyDanis.Api.AnthropicDirectClient.ExtractApiErrorMessage(body);
+                AnthropicTestError = FriendlyError("Anthropic", (int)response.StatusCode)
+                    + (string.IsNullOrWhiteSpace(apiMessage) ? "" : $" (Anthropic sagt: „{apiMessage}“)");
                 AnthropicTestState = TestState.Failure;
             }
         }

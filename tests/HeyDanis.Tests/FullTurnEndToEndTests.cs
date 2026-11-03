@@ -143,7 +143,7 @@ public sealed class FullTurnEndToEndTests
         await harness.Manager.CurrentResponseTask!.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.True(settingsRequested);
-        Assert.Equal("Dein Anthropic-Key fehlt oder stimmt nicht. Öffne die Einstellungen, um ihn zu korrigieren.", vm.LastError);
+        Assert.StartsWith("Anthropic lehnt deinen API-Key ab", vm.LastError);
         Assert.Equal(VoiceState.Idle, vm.VoiceState);
 
         harness.Shutdown();

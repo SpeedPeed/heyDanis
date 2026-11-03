@@ -55,6 +55,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
     private readonly Func<Task>? _prepareForCaptureAsync;
     private readonly bool _useRedesignedPointingProtocol;
     private string _llmProvider;
+    private bool _hasOpenedSettingsForKeyError;
     private string _llmModel;
 
     private readonly List<Message> _conversationHistory = new();
@@ -701,8 +702,14 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                 DebugLog.Write("LLM key error in pipeline", httpEx);
                 await _dispatcher.InvokeAsync(() =>
                 {
-                    _viewModel.LastError = "Dein Anthropic-Key fehlt oder stimmt nicht. Öffne die Einstellungen, um ihn zu korrigieren.";
-                    OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
+                    _viewModel.LastError = DescribeKeyError(httpEx);
+                    // Open the settings only once per configuration — popping the window up on
+                    // every single question is annoying and doesn't tell the user anything new.
+                    if (!_hasOpenedSettingsForKeyError)
+                    {
+                        _hasOpenedSettingsForKeyError = true;
+                        OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
+                    }
                 });
             }
             catch (HttpRequestException httpEx) when (!IsKeyError(httpEx))
@@ -711,7 +718,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                 DebugLog.Write("Response pipeline HTTP error", httpEx);
                 await _dispatcher.InvokeAsync(() =>
                 {
-                    _viewModel.LastError = "Keine Antwort von Claude \u2014 prüf deine Internetverbindung und probier es nochmal.";
+                    _viewModel.LastError = DescribeHttpError(httpEx);
                 });
             }
             catch (Exception ex) when (ex is not OperationCanceledException and not HttpRequestException)
@@ -1105,6 +1112,31 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
     /// Detects whether an HttpRequestException indicates a key-related error
     /// (401 Unauthorized) that the user should fix in Settings.
     /// </summary>
+    /// <summary>
+    /// User-facing text for a rejected API key, including Anthropic's own reason
+    /// (e.g. "invalid x-api-key") so the user knows what is actually wrong.
+    /// </summary>
+    internal static string DescribeKeyError(HttpRequestException ex)
+    {
+        var apiMessage = AnthropicDirectClient.ExtractApiErrorMessage(ex.Message);
+        var reason = string.IsNullOrWhiteSpace(apiMessage) ? "" : $" (Anthropic sagt: „{apiMessage}“)";
+        return "Anthropic lehnt deinen API-Key ab" + reason +
+               ". Klick in den Einstellungen neben dem Key auf „Test“. Der Key muss mit sk-ant-api beginnen und von console.anthropic.com stammen.";
+    }
+
+    /// <summary>User-facing text for any other Claude API error, with the API's reason.</summary>
+    internal static string DescribeHttpError(HttpRequestException ex)
+    {
+        var apiMessage = AnthropicDirectClient.ExtractApiErrorMessage(ex.Message);
+        if (apiMessage is null)
+            return "Keine Antwort von Claude \u2014 prüf deine Internetverbindung und probier es nochmal.";
+
+        if (apiMessage.Contains("credit balance", StringComparison.OrdinalIgnoreCase))
+            return "Dein Anthropic-Guthaben ist aufgebraucht \u2014 lade auf console.anthropic.com unter „Billing“ ein paar Dollar auf.";
+
+        return $"Claude hat einen Fehler gemeldet: {apiMessage}";
+    }
+
     private static bool IsKeyError(HttpRequestException ex)
     {
         var msg = ex.Message;

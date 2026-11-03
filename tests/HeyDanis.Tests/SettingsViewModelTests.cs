@@ -127,6 +127,40 @@ public class SettingsViewModelTests : IDisposable
         Assert.Equal(SettingsViewModel.DefaultVoiceId, vm.SelectedVoiceId);
     }
 
+    [Theory]
+    [InlineData("  sk-ant-api03-abc \r\n", "sk-ant-api03-abc")]
+    [InlineData("\"sk-ant-api03-abc\"", "sk-ant-api03-abc")]
+    public void CleanKey_RemovesPastedWhitespaceAndQuotes(string raw, string expected)
+    {
+        Assert.Equal(expected, SettingsViewModel.CleanKey(raw));
+    }
+
+    [Theory]
+    [InlineData("sk-ant-oat01-xyz", "Claude-Abo")]
+    [InlineData("sk-ant-admin01-xyz", "Admin-Key")]
+    [InlineData("hello", "nicht wie ein Anthropic-API-Key")]
+    public void KeyFormat_DetectsCommonMixUps(string key, string expectedFragment)
+    {
+        Assert.Contains(expectedFragment, SettingsViewModel.DescribeAnthropicKeyFormatProblem(key));
+    }
+
+    [Fact]
+    public void KeyFormat_AcceptsRealApiKey()
+    {
+        Assert.Null(SettingsViewModel.DescribeAnthropicKeyFormatProblem("sk-ant-api03-abcdef"));
+    }
+
+    [Fact]
+    public void Save_StoresCleanedKey()
+    {
+        var vm = new SettingsViewModel(_secrets, _settings);
+        vm.AnthropicApiKey = " sk-ant-api03-abc\n";
+
+        vm.Save();
+
+        Assert.Equal("sk-ant-api03-abc", _secrets.Read(SecretsStore.AnthropicApiKey));
+    }
+
     // -- Model list tests --
 
     [Fact]

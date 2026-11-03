@@ -87,28 +87,34 @@ public sealed class AnthropicDirectClient : ILlmClient
         contentBlocks.Add(new { type = "text", text = userText });
         messages.Add(new { role = "user", content = contentBlocks });
 
-        var json = JsonSerializer.Serialize(BuildRequestBody(_model, systemPrompt, messages));
-        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
-        {
-            Content = new StringContent(json, Encoding.UTF8, "application/json")
-        };
-        // Set auth headers per-request so tests with custom HttpClient work.
-        if (!request.Headers.Contains("x-api-key"))
-        {
-            // Headers are on the default client; no per-request override needed.
-        }
-
-        using var response = await _http.SendAsync(
-            request,
-            HttpCompletionOption.ResponseHeadersRead,
-            ct).ConfigureAwait(false);
+        var response = await SendMessagesRequestAsync(
+            BuildRequestBody(_model, systemPrompt, messages), ct).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-            throw new HttpRequestException(
-                $"Claude API error ({(int)response.StatusCode}): {errorBody}");
+
+            // Safety net: if the API rejects our speed/cost tuning parameters (e.g. a model
+            // that doesn't accept disabled thinking), retry once with a plain request.
+            if ((int)response.StatusCode == 400 && MentionsTuningParameter(errorBody))
+            {
+                response.Dispose();
+                response = await SendMessagesRequestAsync(
+                    BuildRequestBody(_model, systemPrompt, messages, includeTuning: false), ct).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                    errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var statusCode = (int)response.StatusCode;
+                response.Dispose();
+                throw new HttpRequestException(
+                    $"Claude API error ({statusCode}): {errorBody}");
+            }
         }
+
+        using var responseScope = response;
 
         using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
         using var reader = new StreamReader(stream, Encoding.UTF8);
@@ -144,7 +150,7 @@ public sealed class AnthropicDirectClient : ILlmClient
     /// for speed and cost: Haiku runs without extended thinking (fastest, no thinking
     /// tokens billed); Sonnet 5.5 can't disable thinking, so it runs at low effort.
     /// </summary>
-    internal static Dictionary<string, object> BuildRequestBody(string model, string systemPrompt, object messages)
+    internal static Dictionary<string, object> BuildRequestBody(string model, string systemPrompt, object messages, bool includeTuning = true)
     {
         var body = new Dictionary<string, object>
         {
@@ -154,6 +160,11 @@ public sealed class AnthropicDirectClient : ILlmClient
             ["system"] = systemPrompt,
             ["messages"] = messages,
         };
+
+        if (!includeTuning)
+        {
+            return body;
+        }
 
         if (model.StartsWith("claude-haiku", StringComparison.Ordinal))
         {
@@ -166,6 +177,44 @@ public sealed class AnthropicDirectClient : ILlmClient
         }
 
         return body;
+    }
+
+    private async Task<HttpResponseMessage> SendMessagesRequestAsync(Dictionary<string, object> body, CancellationToken ct)
+    {
+        var json = JsonSerializer.Serialize(body);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+        return await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+    }
+
+    internal static bool MentionsTuningParameter(string errorBody) =>
+        errorBody.Contains("thinking", StringComparison.OrdinalIgnoreCase)
+        || errorBody.Contains("output_config", StringComparison.OrdinalIgnoreCase)
+        || errorBody.Contains("effort", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Pulls the human-readable <c>error.message</c> out of an Anthropic error body,
+    /// e.g. "invalid x-api-key" or "Your credit balance is too low …".
+    /// </summary>
+    public static string? ExtractApiErrorMessage(string text)
+    {
+        var jsonStart = text.IndexOf('{');
+        if (jsonStart < 0) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(text[jsonStart..]);
+            if (doc.RootElement.TryGetProperty("error", out var error)
+                && error.TryGetProperty("message", out var message))
+            {
+                return message.GetString();
+            }
+        }
+        catch (JsonException)
+        {
+        }
+        return null;
     }
 
     /// <summary>
