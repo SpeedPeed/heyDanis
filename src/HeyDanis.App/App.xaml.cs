@@ -113,6 +113,8 @@ public partial class App : Application
         _mainWindow = new MainWindow(_companionViewModel!);
         _mainWindow.SettingsRequested += OnSettingsClicked;
         _mainWindow.GamerModeChanged += OnGamerModeChanged;
+        _mainWindow.MonitorTestRequested += (_, _) => _overlayManager?.ShowMonitorTestCircles();
+        _mainWindow.CopyDiagnosticsRequested += (_, _) => CopyDiagnosticsToClipboard();
         MainWindow = _mainWindow;
 
         _companionPanel = new CompanionPanelWindow(_companionViewModel!);

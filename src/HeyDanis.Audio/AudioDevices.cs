@@ -12,7 +12,11 @@ namespace HeyDanis.Audio;
 public static class AudioDevices
 {
     /// <summary>A single selectable audio endpoint.</summary>
-    public readonly record struct DeviceInfo(string Id, string FriendlyName);
+    public readonly record struct DeviceInfo(string Id, string FriendlyName)
+    {
+        /// <summary>Shown by drop-downs that don't use DisplayMemberPath.</summary>
+        public override string ToString() => FriendlyName;
+    }
 
     /// <summary>
     /// Sentinel <see cref="DeviceInfo.Id"/> used by the UI to mean

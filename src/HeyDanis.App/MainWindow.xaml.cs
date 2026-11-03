@@ -53,6 +53,22 @@ public partial class MainWindow : Window
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
         => SettingsRequested?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Raised by the "Monitor-Test" button.</summary>
+    public event EventHandler? MonitorTestRequested;
+
+    /// <summary>Raised by the "Diagnose kopieren" button.</summary>
+    public event EventHandler? CopyDiagnosticsRequested;
+
+    private void MonitorTestButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Hide the window first so the test circles aren't covered by it.
+        Hide();
+        MonitorTestRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void CopyDiagnosticsButton_Click(object sender, RoutedEventArgs e)
+        => CopyDiagnosticsRequested?.Invoke(this, EventArgs.Empty);
+
     private void QuitButton_Click(object sender, RoutedEventArgs e)
         => Application.Current.Shutdown();
 
@@ -104,8 +120,8 @@ public partial class MainWindow : Window
 
         var result = MessageBox.Show(
             this,
-            $"Remove {item.Name} from heyDanis's local knowledge store?",
-            "Remove Knowledge File",
+            $"{item.Name} aus dem Wissensspeicher entfernen?",
+            "Datei entfernen",
             MessageBoxButton.YesNo,
             MessageBoxImage.Question);
 
@@ -128,7 +144,7 @@ public partial class MainWindow : Window
     {
         if (KnowledgeFilesList.SelectedItem is not KnowledgeFileItem item)
         {
-            SelectedKnowledgeTitle.Text = "Select a knowledge file";
+            SelectedKnowledgeTitle.Text = "Wähle eine Datei aus";
             KnowledgePreviewBox.Text = "";
             return;
         }
@@ -156,12 +172,12 @@ public partial class MainWindow : Window
         }
 
         KnowledgeSummaryText.Text = _knowledgeFiles.Count == 0
-            ? "No local knowledge files yet. Add markdown or text files for games, guides, matchups, or long-session reference material."
-            : $"{_knowledgeFiles.Count} local knowledge file(s) will be appended to heyDanis's prompt on each turn.";
+            ? "Noch keine Dateien. Füge z. B. Schulnotizen, Formelsammlungen oder Spiel-Guides als .md- oder .txt-Datei hinzu."
+            : $"{_knowledgeFiles.Count} Datei(en) werden bei jeder Frage mitgeschickt (mehr Text = etwas höhere Kosten).";
 
         if (_knowledgeFiles.Count == 0)
         {
-            SelectedKnowledgeTitle.Text = "Select a knowledge file";
+            SelectedKnowledgeTitle.Text = "Wähle eine Datei aus";
             KnowledgePreviewBox.Text = "";
         }
     }

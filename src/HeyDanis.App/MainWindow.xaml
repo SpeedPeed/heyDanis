@@ -190,6 +190,10 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Monitor-Test" Style="{StaticResource ActionButton}" Margin="0,0,8,0" Click="MonitorTestButton_Click"
+                            ToolTip="Zeichnet auf jedem Monitor Kreise in die Mitte und in die Ecken – zum Prüfen, ob heyDanis richtig zeigt." />
+                    <Button Content="Diagnose kopieren" Style="{StaticResource ActionButton}" Margin="0,0,8,0" Click="CopyDiagnosticsButton_Click"
+                            ToolTip="Legt die letzten wichtigen Log-Zeilen in die Zwischenablage (ohne Keys)." />
                     <Button Content="Einstellungen" Style="{StaticResource ActionButton}" Margin="0,0,8,0" Click="SettingsButton_Click" />
                     <Button Content="Beenden" Style="{StaticResource PrimaryButton}" Click="QuitButton_Click" />
                 </StackPanel>

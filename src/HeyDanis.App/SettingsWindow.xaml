@@ -187,6 +187,8 @@
                                               VerticalAlignment="Center"
                                               Content="{TemplateBinding SelectionBoxItem}"
                                               ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
                                               TextElement.Foreground="{TemplateBinding Foreground}" />
                             <Popup x:Name="PART_Popup"
                                    Placement="Bottom"

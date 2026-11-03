@@ -736,5 +736,13 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
 public enum TestState { None, Testing, Success, Failure }
 
-public record ProviderChoice(string Value, string Display);
-public record ModelChoice(string Value, string Display);
+public record ProviderChoice(string Value, string Display)
+{
+    public override string ToString() => Display;
+}
+
+public record ModelChoice(string Value, string Display)
+{
+    /// <summary>Shown in the drop-downs (the custom dark ComboBox template displays ToString()).</summary>
+    public override string ToString() => Display;
+}
