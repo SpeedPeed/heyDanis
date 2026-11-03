@@ -232,6 +232,14 @@
                                 <TextBlock Text="{Binding PushToTalkShortcutDisplay}" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" HorizontalAlignment="Right" />
                             </Grid>
                             <Grid Margin="0,0,0,12">
+                                <TextBlock Text="Frage tippen" Foreground="{StaticResource TextTertiary}" />
+                                <TextBlock Text="Strg + Alt + Leertaste" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" HorizontalAlignment="Right" />
+                            </Grid>
+                            <Grid Margin="0,0,0,12">
+                                <TextBlock Text="Diktieren (halten)" Foreground="{StaticResource TextTertiary}" />
+                                <TextBlock Text="Strg + Shift" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" HorizontalAlignment="Right" />
+                            </Grid>
+                            <Grid Margin="0,0,0,12">
                                 <TextBlock Text="Mikrofon" Foreground="{StaticResource TextTertiary}" />
                                 <TextBlock Text="{Binding MicrophonePermissionDisplay}" Foreground="{StaticResource TextPrimary}" FontWeight="Medium" HorizontalAlignment="Right" />
                             </Grid>

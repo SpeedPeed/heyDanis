@@ -38,7 +38,13 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
   Fallback auf Standard-Tier, Zoom-Verfeinerung pro Punkt (Einstellung „Genauer zeigen“, Standard an),
   Antwort wird zuerst gesprochen, Zeiger parallel verfeinert. Ergebnis offen.
   Falls immer noch ungenau: Option „Zeigen mit Sonnet“ anbieten (teurer).
-- Als Nächstes: Nutzer testet M3 → danach **M4** (Overlay/Zeigen prüfen, Text-Eingabe, Diktat).
+- **M3 abgeschlossen** (Zeigen passt laut Nutzer nach Zoom-Verfeinerung).
+- **M4 gebaut:** `HeyDanisHotkeyEngine` (Strg+Alt = Sprechen, Strg+Alt+Leertaste = Textbox, Leertaste
+  wird verschluckt; Strg+Shift = Diktat; Akkorde schließen sich gegenseitig aus), `TextQuestionWindow`,
+  Diktat via Whisper → Zwischenablage + Strg+V (`FocusedTextInserter`, alte Zwischenablage wird
+  wiederhergestellt, injizierte Tasten ignoriert der Hook), Kreise/Pfeile auch außerhalb des Gamer-Modus.
+  Multi-Monitor-Zeigen war schon im Fork vorhanden (screenN) – vom Nutzer noch nicht getestet.
+- Als Nächstes: Nutzer testet M4 → danach **M5** (Agent-Modus; Claude-CLI muss installiert sein).
 
 ## Ansprüche (vom Nutzer)
 - OS: Windows
@@ -85,8 +91,8 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
 ## Meilensteine
 - [x] M1 Import + Umbenennung + Aufräumen + CI-Build
 - [ ] M2 Setup beim Nutzer (Key, Mikrofon, Claude Code Login) – CLI-Installation offen
-- [~] M3 Kernschleife: Hotkey → Whisper → Screenshot → Haiku → Piper – gebaut, Test durch Nutzer offen
-- [ ] M4 Overlay/Zeigen Multi-Monitor, Markierungen, Text-Eingabe, Diktat
+- [x] M3 Kernschleife: Hotkey → Whisper → Screenshot → Haiku → Piper – vom Nutzer bestätigt („passt jetzt super“)
+- [~] M4 Overlay/Zeigen Multi-Monitor, Markierungen, Text-Eingabe, Diktat – gebaut, Test durch Nutzer offen
 - [ ] M5 Agent-Modus (parallel, Status, Benachrichtigung, Bestätigung)
 - [ ] M6 Persönlichkeit, Extras, Autostart, Installer
 - [ ] M7 (später, Wunsch des Nutzers) Android-Version für **Pixel 8 Pro** – erst nach M6

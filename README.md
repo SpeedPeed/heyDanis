@@ -13,10 +13,11 @@ Cursor direkt auf die Stelle, die du suchst.
 | Funktion | Bedienung |
 |---|---|
 | Frage per Stimme + Bildschirm | **Strg + Alt** halten, sprechen, loslassen |
-| Frage per Text | **Strg + Alt + Leertaste** |
-| Diktat ins aktive Textfeld | **Strg + Shift** halten |
+| Frage per Text | **Strg + Alt + Leertaste**, tippen, Enter |
+| Diktat ins aktive Textfeld | **Strg + Shift** halten, sprechen, loslassen |
 | Hintergrund-Agent | „**hey agent danis**, …“ sagen |
-| Zeigen auf UI-Elemente | automatisch, auch über mehrere Monitore |
+| Zeigen auf UI-Elemente | automatisch, auch über mehrere Monitore („Genauer zeigen“ mit Zoom) |
+| Markieren | „Kreis mir die Fehler ein“ → Kreise/Pfeile auf dem Bildschirm |
 
 ## Kosten
 

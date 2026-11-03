@@ -37,8 +37,11 @@ Meilensteine. Halte sie nach jedem Meilenstein aktuell.
 - Agent-Modus (geplant): Claude Code CLI (`claude -p`) mit dem Abo-Login des Nutzers.
   `ANTHROPIC_API_KEY` **muss** aus der Umgebung des Kindprozesses entfernt werden.
 - Standard-Sprachkette: Whisper Small lokal → Claude Haiku 5.5 → Piper „Thorsten“ lokal.
-- Hotkey: nur **linke** Alt zählt (AltGr = Strg+Alt auf deutscher Tastatur!), weitere Taste
-  während des Akkords → `ShortcutTransition.Cancelled`.
+- Hotkeys (`HeyDanisHotkeyEngine`): Strg+Alt halten = Sprechen, Strg+Alt+Leertaste = Textbox,
+  Strg+Shift halten = Diktat. Nur **linke** Alt zählt (AltGr = Strg+Alt auf deutscher Tastatur!),
+  weitere Taste während des Akkords → `ShortcutTransition.Cancelled`; injizierte Tasten werden ignoriert.
+- Zeigen: Screenshots exakt nach Claudes Resize-Regel (`ClaudeImageSizing`), `oversized_image: "error"`,
+  optional Zoom-Verfeinerung pro Punkt (`PrecisePointingEnabled`).
 - Daten liegen unter `%APPDATA%\heyDanis` (settings.json, secrets.bin, usage.json, debug.log, models/).
 
 ## Build

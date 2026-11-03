@@ -133,6 +133,11 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         - wenn du unsicher bist, nimm kind "none". lieber nicht zeigen als falsch zeigen.
         - confidence muss "high" sein, sonst kind "none".
         - label kurz und konkret auf deutsch, es steht neben dem zeiger.
+
+        markierungen:
+        - wenn der nutzer etwas markiert, eingekreist oder mit pfeil gezeigt haben will ("kreis ein", "markier", "zeig mit pfeil", "wo sind die fehler"), nimm kind "circle" (x, y = mitte, radius in screenshot-pixeln, eng um das ziel) oder kind "arrow" (x1,y1 = ende, x2,y2 = spitze). auch dafür screen, label und confidence "high" angeben.
+        - mehrere fehler oder stellen: mehrere kreise, maximal fünf.
+        - sonst bleib beim normalen zeiger (kind "point").
         """;
 
     /// <summary>
@@ -967,9 +972,9 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
 
         var result = StructuredPointingTurnParser.Parse(responseBuilder.ToString());
         var directives = StructuredPointingTurnParser.ToDirectives(result.PointIntents, screens);
-        var drawingDirectives = gamerModeEnabled
-            ? StructuredPointingTurnParser.ToDrawingDirectives(result.PointIntents, screens)
-            : [];
+        // Circles/arrows: always in gamer mode, and in normal mode when the user asked to
+        // mark something ("kreis mir das ein", "zeig mit einem pfeil").
+        var drawingDirectives = StructuredPointingTurnParser.ToDrawingDirectives(result.PointIntents, screens);
         var directive = directives.FirstOrDefault();
         timing.Mark("point-parse", directives.Count == 0
             ? $"kind={result.PointIntent.Kind} drawings={drawingDirectives.Count} reason={result.PointIntent.NoPointReason ?? "none"}"
@@ -1007,14 +1012,15 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             await _dispatcher.InvokeAsync(() => _viewModel.VoiceState = VoiceState.Responding);
         }
 
-        if (gamerModeEnabled && drawingDirectives.Count > 0 && _overlayManager is not null)
+        if (drawingDirectives.Count > 0 && _overlayManager is not null)
         {
             if (await DispatchDrawingDirectivesAsync(drawingDirectives, screens, ct).ConfigureAwait(false))
             {
                 timing.Mark("overlay-drawing-dispatch");
             }
         }
-        else if (directives.Count > 0 && (_overlayManager is not null || _overlayFlyTo is not null))
+
+        if (!gamerModeEnabled && directives.Count > 0 && (_overlayManager is not null || _overlayFlyTo is not null))
         {
             IReadOnlyList<PointDirective> finalDirectives = directives
                 .Select(d => ApplyGeoMapOverrideIfAvailable(transcript, d, screens))
