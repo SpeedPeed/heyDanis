@@ -128,7 +128,9 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         - beispiel: "wo kann ich speichern?" in einem programm mit diskettensymbol oben links → ein punkt auf dem diskettensymbol oder dem menü "datei", spokenText "da oben links, oder einfach strg s."
         - für schritt-für-schritt-anleitungen ("wie exportiere ich das") gib die schritte als mehrere punkte in der richtigen reihenfolge zurück, maximal fünf. spokenText nennt die schritte in derselben reihenfolge, ein kurzer satz pro schritt.
         - sonst genau ein punkt.
-        - koordinaten sind screenshot-pixel, ursprung oben links im gewählten bild. x nach rechts, y nach unten. screen ist die nummer aus dem bild-label.
+        - koordinaten sind screenshot-pixel, ursprung oben links im gewählten bild. x nach rechts, y nach unten.
+        - screen ist pflicht: die nummer N aus der beschriftung "screen N of M", die direkt VOR dem bild steht, in dem das ziel liegt. die koordinaten gelten nur für dieses bild. liegt das ziel auf dem anderen monitor als die maus, ist screen eben die andere nummer.
+        - bei text-zielen (wörter, fehler): label ist genau das gemeinte wort, zum beispiel "browwser".
         - bei landkarten: wähle einen punkt innerhalb des gesuchten landes, nie beschriftungen oder nachbarländer.
         - wenn du unsicher bist, nimm kind "none". lieber nicht zeigen als falsch zeigen.
         - confidence muss "high" sein, sonst kind "none".
@@ -167,7 +169,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                   "confidence": { "type": "string", "enum": ["high", "none"] },
                   "reason": { "type": "string" }
                 },
-                "required": ["kind"],
+                "required": ["kind", "screen"],
                 "additionalProperties": false
               }
             }
@@ -1014,7 +1016,14 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
 
         if (drawingDirectives.Count > 0 && _overlayManager is not null)
         {
-            if (await DispatchDrawingDirectivesAsync(drawingDirectives, screens, ct).ConfigureAwait(false))
+            IReadOnlyList<DrawingDirective> finalDrawings = drawingDirectives;
+            if (_precisePointingEnabled)
+            {
+                finalDrawings = await RefineDrawingDirectivesAsync(drawingDirectives, screens, transcript, ct).ConfigureAwait(false);
+                timing.Mark("drawing-refined", $"drawings={finalDrawings.Count}");
+            }
+            if (ct.IsCancellationRequested) return;
+            if (await DispatchDrawingDirectivesAsync(finalDrawings, screens, ct).ConfigureAwait(false))
             {
                 timing.Mark("overlay-drawing-dispatch");
             }
@@ -1047,24 +1056,27 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         }
     }
 
-    /// <summary>JSON schema for the zoom-refinement answer.</summary>
-    private const string PointRefinementResponseSchema = """
+    /// <summary>JSON schema for the zoom-refinement answer: a tight box around the target.</summary>
+    private const string TargetRefinementResponseSchema = """
         {
           "type": "object",
           "properties": {
             "found": { "type": "boolean" },
-            "x": { "type": "integer" },
-            "y": { "type": "integer" }
+            "x1": { "type": "integer" },
+            "y1": { "type": "integer" },
+            "x2": { "type": "integer" },
+            "y2": { "type": "integer" }
           },
-          "required": ["found", "x", "y"],
+          "required": ["found", "x1", "y1", "x2", "y2"],
           "additionalProperties": false
         }
         """;
 
-    private const string PointRefinementSystemPrompt = """
-        du verfeinerst die position eines zeigers auf dem bildschirm. du bekommst einen vergrößerten bildausschnitt rund um die grob geschätzte stelle.
-        antworte nur mit json nach schema. x und y sind pixelkoordinaten im ausschnitt (ursprung oben links, bildgröße steht im label).
-        zeig auf die mitte des gesuchten elements: bei buttons und symbolen die mitte des symbols, bei text den anfang der gemeinten textstelle.
+    private const string TargetRefinementSystemPrompt = """
+        du bestimmst die genaue position eines ziels auf dem bildschirm. du bekommst einen vergrößerten bildausschnitt rund um die grob geschätzte stelle.
+        antworte nur mit json nach schema: ein enger rahmen [x1,y1,x2,y2] (oben links, unten rechts) um das gesuchte ziel, in pixelkoordinaten des ausschnitts (ursprung oben links, bildgröße steht im label).
+        bei text: der rahmen umschließt genau das gemeinte wort bzw. die gemeinte textstelle, nicht die ganze zeile. lies den text im ausschnitt genau, bevor du antwortest.
+        bei buttons und symbolen: der rahmen umschließt das element.
         wenn das gesuchte ziel im ausschnitt nicht zu sehen ist, setz found auf false.
         """;
 
@@ -1076,8 +1088,8 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
 
     /// <summary>
     /// "Zoom in" step recommended by the vision docs for small targets: for each rough point,
-    /// send an enlarged crop around it and let Claude place the point precisely. Runs in
-    /// parallel; any failure keeps the rough point.
+    /// send an enlarged crop around it and let Claude place it exactly. Runs in parallel; any
+    /// failure keeps the rough point.
     /// </summary>
     private async Task<IReadOnlyList<PointDirective>> RefinePointDirectivesAsync(
         IReadOnlyList<PointDirective> directives,
@@ -1085,25 +1097,88 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         string transcript,
         CancellationToken ct)
     {
-        var refined = await Task.WhenAll(directives.Select(d => RefinePointDirectiveAsync(d, screens, transcript, ct))).ConfigureAwait(false);
+        var refined = await Task.WhenAll(directives.Select(async directive =>
+        {
+            var screen = SelectDirectiveScreen(directive, screens);
+            if (screen is null) return directive;
+            var box = await RefineTargetBoxAsync(screen, directive.X, directive.Y, directive.Label, transcript, ct).ConfigureAwait(false);
+            if (box is not { } targetBox) return directive;
+            return directive with
+            {
+                X = targetBox.X + targetBox.Width / 2,
+                Y = targetBox.Y + targetBox.Height / 2,
+            };
+        })).ConfigureAwait(false);
         return refined;
     }
 
-    private async Task<PointDirective> RefinePointDirectiveAsync(
-        PointDirective directive,
+    /// <summary>
+    /// Same zoom step for circles and arrows: circles get centred on the target with a radius
+    /// that just encloses it, arrows get their tip moved onto the target (tail moves along).
+    /// </summary>
+    private async Task<IReadOnlyList<DrawingDirective>> RefineDrawingDirectivesAsync(
+        IReadOnlyList<DrawingDirective> directives,
         IReadOnlyList<CapturedScreen> screens,
         string transcript,
         CancellationToken ct)
     {
-        var screen = SelectDirectiveScreen(directive, screens);
-        if (screen is null) return directive;
+        var refined = await Task.WhenAll(directives.Select(async directive =>
+        {
+            var screenIndex = directive.ScreenNumber - 1;
+            if (screenIndex < 0 || screenIndex >= screens.Count) return directive;
+            var screen = screens[screenIndex];
 
+            if (directive.Kind == DrawingDirectiveKind.Circle)
+            {
+                var box = await RefineTargetBoxAsync(screen, directive.X, directive.Y, directive.Label, transcript, ct).ConfigureAwait(false);
+                if (box is not { } targetBox) return directive;
+                return directive with
+                {
+                    X = targetBox.X + targetBox.Width / 2,
+                    Y = targetBox.Y + targetBox.Height / 2,
+                    Radius = CircleRadiusEnclosing(targetBox),
+                };
+            }
+
+            var tipBox = await RefineTargetBoxAsync(screen, directive.X2, directive.Y2, directive.Label, transcript, ct).ConfigureAwait(false);
+            if (tipBox is not { } arrowTarget) return directive;
+            var newTipX = arrowTarget.X + arrowTarget.Width / 2;
+            var newTipY = arrowTarget.Y + arrowTarget.Height / 2;
+            var deltaX = newTipX - directive.X2;
+            var deltaY = newTipY - directive.Y2;
+            return directive with
+            {
+                X1 = directive.X1 + deltaX,
+                Y1 = directive.Y1 + deltaY,
+                X2 = newTipX,
+                Y2 = newTipY,
+            };
+        })).ConfigureAwait(false);
+        return refined;
+    }
+
+    /// <summary>Radius of a circle around a (possibly wide) word box: half its width plus some air.</summary>
+    internal static int CircleRadiusEnclosing(Rectangle box) =>
+        Math.Max(14, (int)Math.Round(Math.Max(box.Width, box.Height) / 2.0) + 8);
+
+    /// <summary>
+    /// Sends an enlarged crop around (roughX, roughY) and returns a tight box around the
+    /// target in screenshot pixels, or null if Claude can't find it in the crop.
+    /// </summary>
+    private async Task<Rectangle?> RefineTargetBoxAsync(
+        CapturedScreen screen,
+        int roughX,
+        int roughY,
+        string label,
+        string transcript,
+        CancellationToken ct)
+    {
         try
         {
             var cropWidth = Math.Min(RefinementCropWidth, screen.ScreenshotPixelWidth);
             var cropHeight = Math.Min(RefinementCropHeight, screen.ScreenshotPixelHeight);
-            var cropLeft = Math.Clamp(directive.X - cropWidth / 2, 0, screen.ScreenshotPixelWidth - cropWidth);
-            var cropTop = Math.Clamp(directive.Y - cropHeight / 2, 0, screen.ScreenshotPixelHeight - cropHeight);
+            var cropLeft = Math.Clamp(roughX - cropWidth / 2, 0, screen.ScreenshotPixelWidth - cropWidth);
+            var cropTop = Math.Clamp(roughY - cropHeight / 2, 0, screen.ScreenshotPixelHeight - cropHeight);
             var cropRectangle = new Rectangle(cropLeft, cropTop, cropWidth, cropHeight);
 
             var zoomedBytes = await Task.Run(() => ScreenCapture.CropAndScale(screen, cropRectangle, RefinementZoom), ct).ConfigureAwait(false);
@@ -1119,7 +1194,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                 ScreenshotPixelHeight = zoomedHeight,
             };
 
-            var question = $"der nutzer fragte: \"{transcript}\". gesucht ist: \"{directive.Label}\". wo genau ist das im ausschnitt?";
+            var question = $"der nutzer fragte: \"{transcript}\". gesucht ist: \"{label}\". wo genau ist das im ausschnitt?";
 
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeoutCts.CancelAfter(RefinementTimeout);
@@ -1127,38 +1202,39 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             await foreach (var delta in _llmClient.SendAsync(
                 Array.Empty<Message>(),
                 new[] { zoomedScreen },
-                PointRefinementSystemPrompt,
+                TargetRefinementSystemPrompt,
                 question,
-                PointRefinementResponseSchema,
+                TargetRefinementResponseSchema,
                 timeoutCts.Token).ConfigureAwait(false))
             {
                 answer.Append(delta);
             }
 
-            if (!TryParseRefinement(answer.ToString(), zoomedWidth, zoomedHeight, out var zoomedX, out var zoomedY))
+            if (!TryParseRefinementBox(answer.ToString(), zoomedWidth, zoomedHeight, out var zoomedBox))
             {
-                DebugLog.Write($"[POINT] refine: kept rough point for \"{directive.Label}\" (not found in crop)");
-                return directive;
+                DebugLog.Write($"[POINT] refine: kept rough position for \"{label}\" (not found in crop)");
+                return null;
             }
 
-            var refinedDirective = directive with
-            {
-                X = cropLeft + (int)Math.Round(zoomedX / RefinementZoom),
-                Y = cropTop + (int)Math.Round(zoomedY / RefinementZoom),
-            };
-            DebugLog.Write($"[POINT] refine: \"{directive.Label}\" ({directive.X},{directive.Y}) -> ({refinedDirective.X},{refinedDirective.Y})");
-            return refinedDirective;
+            var box = new Rectangle(
+                cropLeft + (int)Math.Round(zoomedBox.X / RefinementZoom),
+                cropTop + (int)Math.Round(zoomedBox.Y / RefinementZoom),
+                Math.Max(1, (int)Math.Round(zoomedBox.Width / RefinementZoom)),
+                Math.Max(1, (int)Math.Round(zoomedBox.Height / RefinementZoom)));
+            DebugLog.Write($"[POINT] refine: \"{label}\" rough=({roughX},{roughY}) -> box=({box.X},{box.Y},{box.Width},{box.Height})");
+            return box;
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            DebugLog.Write($"[POINT] refine failed for \"{directive.Label}\": {ex.GetType().Name}: {ex.Message}");
-            return directive;
+            DebugLog.Write($"[POINT] refine failed for \"{label}\": {ex.GetType().Name}: {ex.Message}");
+            return null;
         }
     }
 
-    internal static bool TryParseRefinement(string json, int width, int height, out int x, out int y)
+    /// <summary>Parses {found,x1,y1,x2,y2}; rejects boxes outside the crop or with no area.</summary>
+    internal static bool TryParseRefinementBox(string json, int width, int height, out Rectangle box)
     {
-        x = y = 0;
+        box = Rectangle.Empty;
         try
         {
             var start = json.IndexOf('{');
@@ -1168,9 +1244,21 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             var root = doc.RootElement;
             if (!root.TryGetProperty("found", out var found) || found.ValueKind != System.Text.Json.JsonValueKind.True)
                 return false;
-            if (!root.TryGetProperty("x", out var xProp) || !xProp.TryGetInt32(out x)) return false;
-            if (!root.TryGetProperty("y", out var yProp) || !yProp.TryGetInt32(out y)) return false;
-            return x >= 0 && y >= 0 && x < width && y < height;
+
+            int Read(string name) => root.TryGetProperty(name, out var p) && p.TryGetInt32(out var v) ? v : -1;
+            var x1 = Read("x1");
+            var y1 = Read("y1");
+            var x2 = Read("x2");
+            var y2 = Read("y2");
+            var left = Math.Min(x1, x2);
+            var top = Math.Min(y1, y2);
+            var right = Math.Max(x1, x2);
+            var bottom = Math.Max(y1, y2);
+            if (left < 0 || top < 0 || right > width || bottom > height || right - left < 2 || bottom - top < 2)
+                return false;
+
+            box = Rectangle.FromLTRB(left, top, right, bottom);
+            return true;
         }
         catch (System.Text.Json.JsonException)
         {

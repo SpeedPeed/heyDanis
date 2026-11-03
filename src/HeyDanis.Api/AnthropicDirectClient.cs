@@ -228,8 +228,10 @@ public sealed class AnthropicDirectClient : ILlmClient
                 // would no longer match our image. A 400 tells us to resize instead.
                 imageBlock["transformations"] = new { oversized_image = "error" };
             }
-            contentBlocks.Add(imageBlock);
+            // Label BEFORE the image: with several monitors, Claude reliably attributes an
+            // image to "screen N" only when the caption precedes it.
             contentBlocks.Add(new { type = "text", text = screen.Label });
+            contentBlocks.Add(imageBlock);
         }
         contentBlocks.Add(new { type = "text", text = userText });
         messages.Add(new { role = "user", content = contentBlocks });
