@@ -1,6 +1,6 @@
 # Windows Pointing Redesign
 
-This document defines the protocol Clicky should use before rebuilding Windows semantic pointing. It intentionally separates what the vision model decides from coordinate conversion and overlay rendering, because recent failures mixed those concerns and made wrong points look like last-mile bugs.
+This document defines the protocol HeyDanis should use before rebuilding Windows semantic pointing. It intentionally separates what the vision model decides from coordinate conversion and overlay rendering, because recent failures mixed those concerns and made wrong points look like last-mile bugs.
 
 ## Current Baseline
 
@@ -24,7 +24,7 @@ Semantic localization is owned by the vision model protocol. It decides whether 
 
 Coordinate conversion is owned by `PointTagParser` and `CapturedScreen` metadata. It parses the model's explicit directive, chooses the intended captured screen, clamps to screenshot bounds, scales screenshot pixels to physical monitor pixels, and adds the monitor origin. Failures in this layer include wrong screen selection, DPI/scaling errors, negative-origin monitor errors, or mismatched screenshot dimensions.
 
-Overlay rendering is owned by `Clicky.Overlay`. It receives a physical desktop point and monitor bounds, then shows the blue cursor. Failures in this layer include WPF DIP/physical-pixel conversion mistakes, transparent window placement errors, animation problems, or compositor-specific visibility issues.
+Overlay rendering is owned by `HeyDanis.Overlay`. It receives a physical desktop point and monitor bounds, then shows the blue cursor. Failures in this layer include WPF DIP/physical-pixel conversion mistakes, transparent window placement errors, animation problems, or compositor-specific visibility issues.
 
 Debugging must start by identifying the layer:
 
@@ -34,9 +34,9 @@ Debugging must start by identifying the layer:
 
 ## Target Behavior
 
-For ordinary explanation questions, Clicky should answer without a visible pointer and return no point.
+For ordinary explanation questions, HeyDanis should answer without a visible pointer and return no point.
 
-For navigation, "show me", "where is", "click", "find", app-control, or visual identification requests, Clicky should point only when it can identify the target inside the screenshot with enough confidence to avoid a misleading visible cursor. A skipped pointer is acceptable. A wrong pointer is not.
+For navigation, "show me", "where is", "click", "find", app-control, or visual identification requests, HeyDanis should point only when it can identify the target inside the screenshot with enough confidence to avoid a misleading visible cursor. A skipped pointer is acceptable. A wrong pointer is not.
 
 Timing target: when a turn requires pointing, the visible cursor should appear as soon as the point decision is available. It must not wait for long spoken prose or TTS completion. Spoken text can continue after the pointer appears.
 

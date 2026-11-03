@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="HeyDanis.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HeyDanis.Audio\HeyDanis.Audio.csproj" />
+    <ProjectReference Include="..\HeyDanis.Capture\HeyDanis.Capture.csproj" />
+    <ProjectReference Include="..\HeyDanis.Hotkey\HeyDanis.Hotkey.csproj" />
+    <ProjectReference Include="..\HeyDanis.Overlay\HeyDanis.Overlay.csproj" />
+    <ProjectReference Include="..\HeyDanis.Api\HeyDanis.Api.csproj" />
+    <ProjectReference Include="..\HeyDanis.Pointing\HeyDanis.Pointing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

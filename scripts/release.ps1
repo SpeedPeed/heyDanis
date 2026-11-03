@@ -1,13 +1,13 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Builds and packages Clicky for Windows as a single-file executable
+    Builds and packages HeyDanis for Windows as a single-file executable
     and optionally wraps it in an Inno Setup installer.
 
 .DESCRIPTION
     1. Runs dotnet publish to produce a self-contained single-file exe.
     2. If Inno Setup (iscc.exe) is on PATH, compiles the .iss script into
-       a Setup_Clicky.exe installer.
+       a Setup_HeyDanis.exe installer.
 
 .PARAMETER Configuration
     Build configuration. Default: Release
@@ -33,13 +33,13 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $windowsRoot = Join-Path $repoRoot "windows"
-$solutionPath = Join-Path $windowsRoot "Clicky.sln"
-$appProjectPath = Join-Path $windowsRoot "src\Clicky.App\Clicky.App.csproj"
+$solutionPath = Join-Path $windowsRoot "HeyDanis.sln"
+$appProjectPath = Join-Path $windowsRoot "src\HeyDanis.App\HeyDanis.App.csproj"
 $publishDir = Join-Path $windowsRoot "publish\$Runtime"
-$installerScript = Join-Path $windowsRoot "scripts\clicky-installer.iss"
+$installerScript = Join-Path $windowsRoot "scripts\heydanis-installer.iss"
 $installerOutputDir = Join-Path $windowsRoot "installer"
 
-Write-Host "=== Clicky for Windows - Release Build ===" -ForegroundColor Cyan
+Write-Host "=== HeyDanis for Windows - Release Build ===" -ForegroundColor Cyan
 Write-Host "Configuration : $Configuration"
 Write-Host "Runtime       : $Runtime"
 Write-Host "Publish dir   : $publishDir"
@@ -52,7 +52,7 @@ if (Test-Path $publishDir) {
 }
 
 # Step 2: Publish as a single-file executable (self-contained)
-Write-Host "Publishing Clicky.App..." -ForegroundColor Green
+Write-Host "Publishing HeyDanis.App..." -ForegroundColor Green
 dotnet publish $appProjectPath `
     -c $Configuration `
     -r $Runtime `
