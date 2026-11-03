@@ -1,0 +1,23 @@
+# Build-Ausgaben
+bin/
+obj/
+publish/
+dist/
+*.user
+*.suo
+.vs/
+.idea/
+TestResults/
+
+# Lokale Modelle (Whisper/Piper) – werden zur Laufzeit geladen, nie committen
+models/
+*.onnx
+*.bin
+*.ggml
+
+# Geheimnisse – NIE committen
+.env
+.env.*
+*.secrets.json
+appsettings.Local.json
+secrets*.json

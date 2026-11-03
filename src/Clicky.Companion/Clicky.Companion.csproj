@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Clicky.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Clicky.Audio\Clicky.Audio.csproj" />
+    <ProjectReference Include="..\Clicky.Capture\Clicky.Capture.csproj" />
+    <ProjectReference Include="..\Clicky.Hotkey\Clicky.Hotkey.csproj" />
+    <ProjectReference Include="..\Clicky.Overlay\Clicky.Overlay.csproj" />
+    <ProjectReference Include="..\Clicky.Api\Clicky.Api.csproj" />
+    <ProjectReference Include="..\Clicky.Pointing\Clicky.Pointing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PostHog" Version="2.4.1" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,73 @@
+[
+  {
+    "fixtureId": "world-map-egypt",
+    "name": "egypt inside country",
+    "response": "Egypt is in northeast Africa. [POINT:532,252:Egypt:screen1]",
+    "expectedPass": true
+  },
+  {
+    "fixtureId": "world-map-egypt",
+    "name": "egypt conservative none",
+    "response": "I cannot point to Egypt reliably from this map view. [POINT:none]",
+    "expectedPass": true
+  },
+  {
+    "fixtureId": "world-map-egypt",
+    "name": "egypt wrong neighboring country",
+    "response": "Egypt is here. [POINT:462,264:Egypt:screen1]",
+    "expectedPass": false,
+    "expectedReasonContains": "distractor"
+  },
+  {
+    "fixtureId": "world-map-algeria",
+    "name": "algeria inside country",
+    "response": "Algeria is here. [POINT:340,296:Algeria:screen1]",
+    "expectedPass": true
+  },
+  {
+    "fixtureId": "world-map-algeria",
+    "name": "algeria water point",
+    "response": "Algeria is in north Africa. [POINT:312,166:Algeria:screen1]",
+    "expectedPass": false,
+    "expectedReasonContains": "distractor"
+  },
+  {
+    "fixtureId": "nearby-country-distractors",
+    "name": "nearby countries exact egypt",
+    "response": "Egypt, not Libya or Sudan, is here. [POINT:502,226:Egypt:screen1]",
+    "expectedPass": true
+  },
+  {
+    "fixtureId": "nearby-country-distractors",
+    "name": "nearby countries sudan failure",
+    "response": "Egypt is here. [POINT:526,354:Egypt:screen1]",
+    "expectedPass": false,
+    "expectedReasonContains": "distractor"
+  },
+  {
+    "fixtureId": "dense-settings-panel",
+    "name": "dense panel elevenlabs field",
+    "response": "The ElevenLabs API key field is here. [POINT:560,404:ElevenLabs API key field:screen1]",
+    "expectedPass": true
+  },
+  {
+    "fixtureId": "dense-settings-panel",
+    "name": "dense panel neighboring assemblyai field",
+    "response": "The ElevenLabs API key field is here. [POINT:560,338:ElevenLabs API key field:screen1]",
+    "expectedPass": false,
+    "expectedReasonContains": "distractor"
+  },
+  {
+    "fixtureId": "simple-labeled-ui-target",
+    "name": "simple box b",
+    "response": "Box B is in the center. [POINT:456,260:box B:screen1]",
+    "expectedPass": true
+  },
+  {
+    "fixtureId": "simple-labeled-ui-target",
+    "name": "simple box a failure",
+    "response": "Box B is here. [POINT:216,260:box B:screen1]",
+    "expectedPass": false,
+    "expectedReasonContains": "distractor"
+  }
+]
