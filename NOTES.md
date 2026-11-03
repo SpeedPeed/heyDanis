@@ -134,6 +134,17 @@ Vom PC übernehmbar: Prompts, Pointing-Protokoll (JSON), Kostenlogik.
   wenn sich nur Sprach-Pakete geändert haben.
 - Idee für M6: eingebauter Updater, der nur geänderte Dateien von GitHub Releases lädt.
 
+## Erklär-Tafel (gebaut, Test durch Nutzer offen)
+- Haiku setzt `showBoard`/`boardTopic`/`boardMode` im strukturierten JSON; App öffnet
+  `ExplanationBoardWindow` (WebView2) und lässt `IBoardGenerator` eine HTML-Seite schreiben
+  (SVG-Animationen, KaTeX, three.js). Standard: `ClaudeCodeCliBoardGenerator` = `claude -p --output-format json
+  --model sonnet --tools Read --allowedTools Read --system-prompt-file … --no-session-persistence --max-turns 4`,
+  Prompt über stdin, Screenshot als `bildschirm.jpg` im Arbeitsordner `%LOCALAPPDATA%\heyDanis\board`.
+  **Kein `--bare`** (liest keinen Abo-Login). Alternative: `ApiBoardGenerator` (Sonnet, ~2–5 Cent).
+- Im Container mit echter CLI getestet: Flags ok, JSON-Form ok, Read-Tool ohne Rückfrage ok, zwei Beispiel-
+  Tafeln (Pythagoras 29 s, 3D-Kreuzprodukt 43 s) gerendert, keine JS-Fehler.
+- Nutzer hat die **CLI noch nicht installiert** → ohne CLI zeigt die Tafel eine Installationsanleitung.
+
 ## Neue Anforderung (nach M4): „Kompetenz wie HeyClicky“
 Nutzer war von HeyClicky v. a. von der **Kompetenz und den Möglichkeiten** beeindruckt: Seiten öffnen,
 mit Seiten/Apps interagieren, Overlays erstellen, live Notizfelder öffnen und dort Erklärungen zeichnen,
