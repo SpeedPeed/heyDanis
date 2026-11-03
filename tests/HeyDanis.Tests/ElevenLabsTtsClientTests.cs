@@ -163,6 +163,9 @@ public class ElevenLabsTtsClientTests
     [Fact]
     public async Task PlayStreamingMp3Async_StartsPlaybackBeforeFullDownload()
     {
+        // CI runners (GitHub Actions) have no sound card, so waveOutOpen fails there.
+        // These playback tests only make sense on a machine with an audio output.
+        if (!HasAudioOutputDevice()) return;
         var mp3Data = GenerateTestMp3(durationSeconds: 2);
         using var client = new ElevenLabsTtsClient("test-key", "test-voice");
 
@@ -186,6 +189,9 @@ public class ElevenLabsTtsClientTests
     [Fact]
     public async Task PlayStreamingMp3Async_Cancellation_DisposesWithinOneSecond()
     {
+        // CI runners (GitHub Actions) have no sound card, so waveOutOpen fails there.
+        // These playback tests only make sense on a machine with an audio output.
+        if (!HasAudioOutputDevice()) return;
         var mp3Data = GenerateTestMp3(durationSeconds: 3);
         using var client = new ElevenLabsTtsClient("test-key", "test-voice");
 
@@ -308,4 +314,6 @@ public class ElevenLabsTtsClientTests
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
         }
     }
+
+    private static bool HasAudioOutputDevice() => NAudio.Wave.WaveOut.DeviceCount > 0;
 }

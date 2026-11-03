@@ -137,7 +137,7 @@ public class SettingsStoreTests : IDisposable
         var json = File.ReadAllText(_tempFile);
 
         Assert.Contains("\"llmProvider\"", json);
-        Assert.Contains("\"zai\"", json);
+        Assert.Contains("\"anthropic-test\"", json);
     }
 
     [Fact]
