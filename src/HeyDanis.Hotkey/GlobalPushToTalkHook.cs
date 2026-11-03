@@ -124,6 +124,13 @@ public sealed class GlobalPushToTalkHook : IDisposable
             if (isDown || isUp)
             {
                 var data = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
+
+                // Ignore keys we inject ourselves (the Strg+V of dictation), otherwise our
+                // own paste could look like the user pressing a shortcut.
+                const uint LLKHF_INJECTED = 0x10;
+                if ((data.flags & LLKHF_INJECTED) != 0)
+                    return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
+
                 var result = _engine.Process((int)data.vkCode, isDown);
 
                 // Unbounded single-writer channels — TryWrite always succeeds.

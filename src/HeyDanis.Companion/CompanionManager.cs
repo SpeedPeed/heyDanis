@@ -242,6 +242,97 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
     {
         _hookConsumerCts = new CancellationTokenSource();
         _hookConsumerTask = ConsumeHotkeyTransitionsAsync(_hookConsumerCts.Token);
+        _dictationConsumerTask = ConsumeDictationTransitionsAsync(_hookConsumerCts.Token);
+    }
+
+    // ── Dictation (Strg+Shift held): speech → text into the focused field, no Claude ──
+
+    private Task? _dictationConsumerTask;
+    private bool _isDictating;
+
+    private async Task ConsumeDictationTransitionsAsync(CancellationToken ct)
+    {
+        try
+        {
+            await foreach (var transition in _hook.DictationTransitions.ReadAllAsync(ct).ConfigureAwait(false))
+            {
+                await _dispatcher.InvokeAsync(() => HandleDictationTransition(transition));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on shutdown
+        }
+    }
+
+    private void HandleDictationTransition(ShortcutTransition transition)
+    {
+        switch (transition)
+        {
+            case ShortcutTransition.Pressed:
+                // Don't mix dictation into a running voice question.
+                if (_viewModel.VoiceState == VoiceState.Listening) return;
+                _isDictating = true;
+                _viewModel.ClearError();
+                _viewModel.VoiceState = VoiceState.Listening;
+                _ttsClient.StopPlayback();
+                _overlayManager?.ShowResponseText("Diktat … sprich jetzt, dann Strg+Shift loslassen.");
+                DebugLog.Write("[DICTATION] started");
+                _micCaptureCts = new CancellationTokenSource();
+                _recordingTask = StartRecordingAsync(_micCaptureCts.Token);
+                break;
+
+            case ShortcutTransition.Released when _isDictating:
+                _isDictating = false;
+                _viewModel.VoiceState = VoiceState.Processing;
+                _ = FinishDictationAsync();
+                break;
+
+            case ShortcutTransition.Cancelled when _isDictating:
+                _isDictating = false;
+                DebugLog.Write("[DICTATION] cancelled by another key");
+                _overlayManager?.HideResponseText();
+                HandleCancelled();
+                break;
+        }
+    }
+
+    private async Task FinishDictationAsync()
+    {
+        _micCaptureCts?.Cancel();
+        _activeMicCapture?.Dispose();
+        _activeMicCapture = null;
+
+        var session = _activeTranscriptionSession;
+        _activeTranscriptionSession = null;
+        try
+        {
+            if (session is null) return;
+            var transcript = (await session.RequestFinalTranscriptAsync().ConfigureAwait(false)).Trim();
+            DebugLog.Write($"[DICTATION] transcript chars={transcript.Length}");
+            await _dispatcher.InvokeAsync(async () =>
+            {
+                _overlayManager?.HideResponseText();
+                if (transcript.Length == 0)
+                {
+                    _viewModel.LastError = "Beim Diktat hab ich nichts verstanden.";
+                    return;
+                }
+                // Trailing space so the next dictation doesn't stick to this one.
+                await FocusedTextInserter.InsertAsync(transcript + " ");
+            }).Task.Unwrap().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("[DICTATION] failed", ex);
+            await _dispatcher.InvokeAsync(() =>
+                _viewModel.LastError = $"Diktat hat nicht geklappt: {ex.Message}");
+        }
+        finally
+        {
+            session?.Dispose();
+            await _dispatcher.InvokeAsync(() => _viewModel.VoiceState = VoiceState.Idle);
+        }
     }
 
     /// <summary>Conversation history, exposed for testing.</summary>
