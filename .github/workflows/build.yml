@@ -28,13 +28,14 @@ jobs:
       - name: Test
         run: dotnet test HeyDanis.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx"
 
-      - name: Publish single-file exe
+      # A normal folder (not single-file): the native Whisper/Piper libraries must sit
+      # next to the exe, single-file extraction to %TEMP% breaks their loaders.
+      - name: Publish app folder
         run: >
           dotnet publish src/HeyDanis.App/HeyDanis.App.csproj -c Release -r win-x64
-          --self-contained true -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true -o publish/win-x64
+          --self-contained true -p:DebugType=none -o publish/win-x64
 
-      - name: Upload exe
+      - name: Upload app
         uses: actions/upload-artifact@v4
         with:
           name: heyDanis-win-x64

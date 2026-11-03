@@ -442,7 +442,7 @@ public sealed class FullTurnEndToEndTests
         Assert.Equal(2, llm.CallCount);
         Assert.Equal(new[] { 0, 1 }, llm.ScreenCounts);
         Assert.Equal(1, captureCount);
-        Assert.Equal("heydanis timing diagnostic.", tts.Spoken.Single());
+        Assert.Equal("heydanis zeitmessung.", tts.Spoken.Single());
 
         harness.Shutdown();
     }

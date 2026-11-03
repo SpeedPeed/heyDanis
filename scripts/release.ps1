@@ -1,11 +1,11 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Builds and packages HeyDanis for Windows as a single-file executable
+    Builds and packages heyDanis for Windows as a self-contained app folder
     and optionally wraps it in an Inno Setup installer.
 
 .DESCRIPTION
-    1. Runs dotnet publish to produce a self-contained single-file exe.
+    1. Runs dotnet publish to produce a self-contained app folder (native Whisper/Piper libs next to the exe).
     2. If Inno Setup (iscc.exe) is on PATH, compiles the .iss script into
        a Setup_HeyDanis.exe installer.
 
@@ -57,8 +57,7 @@ dotnet publish $appProjectPath `
     -c $Configuration `
     -r $Runtime `
     --self-contained true `
-    /p:PublishSingleFile=true `
-    /p:IncludeNativeLibrariesForSelfExtract=true `
+    /p:DebugType=none `
     -o $publishDir
 
 if ($LASTEXITCODE -ne 0) {

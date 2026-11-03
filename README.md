@@ -24,15 +24,19 @@ heyDanis ist auf möglichst geringe Kosten ausgelegt:
 
 - **Fragen:** Claude Haiku 5.5 über deinen eigenen Anthropic-API-Key – ca. 0,07 Cent pro Frage.
 - **Agent-Modus:** läuft über deine installierte Claude-Code-CLI und dein Claude-Abo.
-- **Sprache rein/raus:** lokal auf deinem PC (Whisper / Piper) – kostenlos. *(ab Meilenstein 3)*
+- **Sprache rein/raus:** lokal auf deinem PC (Whisper / Piper) – kostenlos.
 
 ## Installation (für Nutzer)
 
 1. Auf GitHub unter **Actions → Build heyDanis →** neuester grüner Lauf das Artefakt
-   **heyDanis-win-x64** herunterladen und entpacken.
+   **heyDanis-win-x64** herunterladen und in einen festen Ordner entpacken
+   (z. B. `C:\Users\<du>\heyDanis`). Den Ordner nicht auseinanderreißen –
+   die Spracherkennung braucht die Dateien neben der Exe.
 2. `heyDanis.exe` starten. Windows SmartScreen warnt bei unsignierten Programmen:
    **Weitere Informationen → Trotzdem ausführen**.
-3. Im Einstellungsfenster deinen Anthropic-API-Key eintragen.
+3. Im Einstellungsfenster deinen Anthropic-API-Key eintragen. Beim ersten Start lädt
+   heyDanis die Sprachmodelle (~260 MB) einmalig herunter – der Fortschritt steht im
+   Hauptfenster.
 
 API-Keys werden mit Windows DPAPI verschlüsselt unter `%APPDATA%\heyDanis` gespeichert
 und nie hochgeladen.
@@ -45,7 +49,7 @@ Voraussetzung: [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 .\run.cmd                         # App aus dem Quellcode starten
 dotnet build HeyDanis.sln         # bauen
 dotnet test HeyDanis.sln          # Tests
-.\scripts\release.ps1             # Single-File-Exe (+ Installer, falls Inno Setup installiert)
+.\scripts\release.ps1             # App-Ordner (+ Installer, falls Inno Setup installiert)
 ```
 
 Projektaufbau:
@@ -58,7 +62,8 @@ src/
   HeyDanis.Capture/    Screenshots aller Monitore
   HeyDanis.Hotkey/     globaler Tastatur-Hook
   HeyDanis.Overlay/    transparentes Overlay mit Buddy-Cursor und Markierungen
-  HeyDanis.Api/        Claude-, Spracherkennungs- und Stimmen-Clients
+  HeyDanis.Api/        Claude-Client, Schnittstellen für Sprache, AssemblyAI/ElevenLabs (optional)
+  HeyDanis.LocalSpeech/ Whisper (Spracherkennung) und Piper (Stimme), lokal & gratis
   HeyDanis.Pointing/   Parser für [POINT:…]-Tags
 tests/HeyDanis.Tests/
 ```
