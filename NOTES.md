@@ -48,6 +48,12 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
   zweiter Monitor: sieht ihn, Cursor bleibt aber auf dem Maus-Monitor. Fix: Zoom-Verfeinerung liefert
   jetzt einen Rahmen (Kreise/Pfeile/Punkte), `screen` im Schema Pflicht, Bild-Beschriftung VOR dem Bild.
   Falls Monitor 2 weiter nicht klappt: `[POINT] overlay: matched overlay index=…`-Zeilen aus debug.log prüfen.
+- **Zweiter Markier-Test:** besser, aber „lange nicht gut genug“; Nutzer findet HeyClicky „extrem
+  beeindruckend“, heyDanis wirkt dagegen „wie kaputtes Kinderspielzeug“. Ehrliche Einordnung an Nutzer:
+  Qualitätslücke kommt großteils von den Spar-Entscheidungen (Haiku statt Sonnet, Piper statt ElevenLabs,
+  Whisper statt Streaming-STT). Gratis-Fix: **Windows-OCR-Snapping** (`ScreenTextRecognizer` +
+  `TextTargetMatcher`): Claude nennt nur den Text, OCR liefert die exakte Position. Kostenpflichtige
+  Optionen (Sonnet fürs Zeigen, ElevenLabs, AssemblyAI) dem Nutzer zur Entscheidung vorgelegt.
 - Als Nächstes: Nutzer testet M4 → danach **M5** (Agent-Modus; Claude-CLI muss installiert sein).
 
 ## Ansprüche (vom Nutzer)
