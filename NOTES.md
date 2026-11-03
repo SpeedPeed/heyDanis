@@ -19,6 +19,10 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
   - AltGr-Schutz + Abbruch bei Strg+Alt+<Taste>.
   - Build ist jetzt ein App-**Ordner** (nicht Single-File), weil Whisper seine nativen DLLs
     in `runtimes/` neben der Exe sucht.
+- **Erster M3-Test beim Nutzer:** Einstellungsfenster ging bei jeder Frage auf (Claude antwortete
+  401 = Key abgelehnt) und Auswahlfelder waren weiß/unlesbar. Behoben: echte Anthropic-Fehlermeldung,
+  Fenster nur einmal, Key-Format-Prüfung (Abo-Token vs. API-Key), dunkles ComboBox-Template.
+  Ursache des 401 noch unklar → Nutzer prüft mit „Test“-Button.
 - Als Nächstes: Nutzer testet M3 → danach **M4** (Overlay/Zeigen prüfen, Text-Eingabe, Diktat).
 
 ## Ansprüche (vom Nutzer)
