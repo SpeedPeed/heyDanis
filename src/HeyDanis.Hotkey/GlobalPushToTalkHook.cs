@@ -23,7 +23,8 @@ namespace HeyDanis.Hotkey;
 public sealed class GlobalPushToTalkHook : IDisposable
 {
     private readonly Channel<ShortcutTransition> _channel;
-    private readonly PushToTalkShortcutEngine _engine;
+    private readonly Channel<ShortcutTransition> _dictationChannel;
+    private readonly HeyDanisHotkeyEngine _engine;
 
     // The delegate is held as a field so the GC can't collect it while the
     // hook is installed. Collecting it would crash the process the next time
@@ -34,14 +35,31 @@ public sealed class GlobalPushToTalkHook : IDisposable
 
     public GlobalPushToTalkHook(PushToTalkShortcut chord)
     {
-        _engine = new PushToTalkShortcutEngine(chord);
+        // heyDanis uses fixed shortcuts (Strg+Alt, Strg+Alt+Leertaste, Strg+Shift); the
+        // parameter is kept for the existing call sites.
+        _engine = new HeyDanisHotkeyEngine();
         _channel = Channel.CreateUnbounded<ShortcutTransition>(new UnboundedChannelOptions
         {
             SingleReader = true,
             SingleWriter = true,
             AllowSynchronousContinuations = false,
         });
+        _dictationChannel = Channel.CreateUnbounded<ShortcutTransition>(new UnboundedChannelOptions
+        {
+            SingleReader = true,
+            SingleWriter = true,
+            AllowSynchronousContinuations = false,
+        });
     }
+
+    /// <summary>Dictation (Strg+Shift) transitions.</summary>
+    public ChannelReader<ShortcutTransition> DictationTransitions => _dictationChannel.Reader;
+
+    /// <summary>
+    /// Raised on the UI thread when Strg+Alt+Leertaste is pressed. Handlers must return
+    /// quickly (they run inside the keyboard hook) — post real work to the dispatcher.
+    /// </summary>
+    public event EventHandler? TextInputRequested;
 
     /// <summary>Read transitions as they happen. Safe to await from any thread.</summary>
     public ChannelReader<ShortcutTransition> Transitions => _channel.Reader;
@@ -106,12 +124,20 @@ public sealed class GlobalPushToTalkHook : IDisposable
             if (isDown || isUp)
             {
                 var data = Marshal.PtrToStructure<NativeMethods.KBDLLHOOKSTRUCT>(lParam);
-                var transition = _engine.Process((int)data.vkCode, isDown);
-                if (transition != ShortcutTransition.None)
-                {
-                    // Unbounded single-writer channel — TryWrite always succeeds.
-                    _channel.Writer.TryWrite(transition);
-                }
+                var result = _engine.Process((int)data.vkCode, isDown);
+
+                // Unbounded single-writer channels — TryWrite always succeeds.
+                if (result.PushToTalk != ShortcutTransition.None)
+                    _channel.Writer.TryWrite(result.PushToTalk);
+                if (result.Dictation != ShortcutTransition.None)
+                    _dictationChannel.Writer.TryWrite(result.Dictation);
+                if (result.TextInputRequested)
+                    TextInputRequested?.Invoke(this, EventArgs.Empty);
+
+                // Only the Space of Strg+Alt+Leertaste is swallowed so it doesn't type a
+                // space into the focused app; every other key passes through untouched.
+                if (result.SwallowKey)
+                    return (IntPtr)1;
             }
         }
 
@@ -126,5 +152,6 @@ public sealed class GlobalPushToTalkHook : IDisposable
         _disposed = true;
         Stop();
         _channel.Writer.TryComplete();
+        _dictationChannel.Writer.TryComplete();
     }
 }

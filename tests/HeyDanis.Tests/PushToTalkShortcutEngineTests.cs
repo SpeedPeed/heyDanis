@@ -141,3 +141,77 @@ public class PushToTalkShortcutEngineTests
             engine.Process(PushToTalkShortcutEngine.VK_LMENU, isKeyDown: true));
     }
 }
+
+public class HeyDanisHotkeyEngineTests
+{
+    private const int VK_LCONTROL = PushToTalkShortcutEngine.VK_LCONTROL;
+    private const int VK_LMENU = PushToTalkShortcutEngine.VK_LMENU;
+    private const int VK_LSHIFT = PushToTalkShortcutEngine.VK_LSHIFT;
+    private const int VK_SPACE = HeyDanisHotkeyEngine.VK_SPACE;
+
+    [Fact]
+    public void ControlAltSpace_RequestsTextInput_CancelsPushToTalk_AndSwallowsSpace()
+    {
+        var engine = new HeyDanisHotkeyEngine();
+        engine.Process(VK_LCONTROL, true);
+        Assert.Equal(ShortcutTransition.Pressed, engine.Process(VK_LMENU, true).PushToTalk);
+
+        var spaceDown = engine.Process(VK_SPACE, true);
+        Assert.True(spaceDown.TextInputRequested);
+        Assert.True(spaceDown.SwallowKey);
+        Assert.Equal(ShortcutTransition.Cancelled, spaceDown.PushToTalk);
+
+        var spaceUp = engine.Process(VK_SPACE, false);
+        Assert.True(spaceUp.SwallowKey);
+        Assert.False(spaceUp.TextInputRequested);
+
+        // Letting go afterwards neither releases push-to-talk nor starts anything.
+        Assert.Equal(ShortcutTransition.None, engine.Process(VK_LMENU, false).PushToTalk);
+        Assert.Equal(ShortcutTransition.None, engine.Process(VK_LCONTROL, false).PushToTalk);
+    }
+
+    [Fact]
+    public void ControlShift_StartsAndStopsDictation_NotPushToTalk()
+    {
+        var engine = new HeyDanisHotkeyEngine();
+        Assert.Equal(ShortcutTransition.None, engine.Process(VK_LCONTROL, true).Dictation);
+        var shiftDown = engine.Process(VK_LSHIFT, true);
+        Assert.Equal(ShortcutTransition.Pressed, shiftDown.Dictation);
+        Assert.Equal(ShortcutTransition.None, shiftDown.PushToTalk);
+
+        Assert.Equal(ShortcutTransition.Released, engine.Process(VK_LSHIFT, false).Dictation);
+    }
+
+    [Fact]
+    public void ControlShiftLetter_CancelsDictation()
+    {
+        var engine = new HeyDanisHotkeyEngine();
+        engine.Process(VK_LCONTROL, true);
+        engine.Process(VK_LSHIFT, true);
+
+        // Strg+Shift+T (reopen tab) is a normal shortcut.
+        Assert.Equal(ShortcutTransition.Cancelled, engine.Process(0x54, true).Dictation);
+        Assert.Equal(ShortcutTransition.None, engine.Process(VK_LSHIFT, false).Dictation);
+    }
+
+    [Fact]
+    public void AddingAltToDictation_CancelsInsteadOfReleasing_AndDoesNotStartPushToTalk()
+    {
+        var engine = new HeyDanisHotkeyEngine();
+        engine.Process(VK_LCONTROL, true);
+        engine.Process(VK_LSHIFT, true);
+
+        var altDown = engine.Process(VK_LMENU, true);
+        Assert.Equal(ShortcutTransition.Cancelled, altDown.Dictation);
+        Assert.Equal(ShortcutTransition.None, altDown.PushToTalk);
+    }
+
+    [Fact]
+    public void SpaceWithoutChord_IsNotSwallowed()
+    {
+        var engine = new HeyDanisHotkeyEngine();
+        var result = engine.Process(VK_SPACE, true);
+        Assert.False(result.SwallowKey);
+        Assert.False(result.TextInputRequested);
+    }
+}

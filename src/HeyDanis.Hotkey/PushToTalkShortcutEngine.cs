@@ -74,9 +74,18 @@ public sealed class PushToTalkShortcutEngine
 
         if (_suppressedUntilChordReleased)
         {
-            if (!nowPressed)
+            if (!RequiredModifiersHeld())
                 _suppressedUntilChordReleased = false;
             return ShortcutTransition.None;
+        }
+
+        // An extra modifier joined a held chord (Strg+Shift → Strg+Shift+Alt): that's a
+        // different shortcut, not "let go" — cancel instead of releasing.
+        if (_wasPressed && !nowPressed && RequiredModifiersHeld())
+        {
+            _wasPressed = false;
+            _suppressedUntilChordReleased = true;
+            return ShortcutTransition.Cancelled;
         }
 
         if (nowPressed && !_wasPressed)
@@ -133,13 +142,25 @@ public sealed class PushToTalkShortcutEngine
         }
     }
 
-    private bool IsChordSatisfied() => _chord switch
+    private bool IsChordSatisfied() => RequiredModifiersHeld() && !ExcludedModifierHeld();
+
+    private bool RequiredModifiersHeld() => _chord switch
     {
-        // AltGr held means the user is typing a special character — never a chord.
-        PushToTalkShortcut.ControlAlt => _ctrl && _leftAlt && !_rightAlt,
-        PushToTalkShortcut.ControlShift => _ctrl && _shift && !_rightAlt,
-        PushToTalkShortcut.AltShift => _leftAlt && _shift && !_rightAlt,
-        PushToTalkShortcut.WinAlt => _win && _leftAlt && !_rightAlt,
+        PushToTalkShortcut.ControlAlt => _ctrl && _leftAlt,
+        PushToTalkShortcut.ControlShift => _ctrl && _shift,
+        PushToTalkShortcut.AltShift => _leftAlt && _shift,
+        PushToTalkShortcut.WinAlt => _win && _leftAlt,
+        _ => false,
+    };
+
+    /// <summary>
+    /// Modifiers that turn the chord into something else. AltGr always (special characters);
+    /// Strg+Alt and Strg+Shift exclude each other so push-to-talk and dictation never fire together.
+    /// </summary>
+    private bool ExcludedModifierHeld() => _rightAlt || _chord switch
+    {
+        PushToTalkShortcut.ControlAlt => _shift,
+        PushToTalkShortcut.ControlShift => _leftAlt,
         _ => false,
     };
 }
