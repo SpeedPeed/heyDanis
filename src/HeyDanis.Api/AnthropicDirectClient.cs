@@ -52,11 +52,20 @@ public sealed class AnthropicDirectClient : ILlmClient
     /// Sends a streaming request to Claude via api.anthropic.com and yields
     /// incremental text deltas as they arrive over the SSE stream.
     /// </summary>
+    public IAsyncEnumerable<string> SendAsync(
+        IReadOnlyList<Message> history,
+        IReadOnlyList<CapturedScreen> screens,
+        string systemPrompt,
+        string userText,
+        CancellationToken ct = default)
+        => SendAsync(history, screens, systemPrompt, userText, responseJsonSchema: null, ct);
+
     public async IAsyncEnumerable<string> SendAsync(
         IReadOnlyList<Message> history,
         IReadOnlyList<CapturedScreen> screens,
         string systemPrompt,
         string userText,
+        string? responseJsonSchema,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         var messages = new List<object>();
@@ -88,7 +97,7 @@ public sealed class AnthropicDirectClient : ILlmClient
         messages.Add(new { role = "user", content = contentBlocks });
 
         var response = await SendMessagesRequestAsync(
-            BuildRequestBody(_model, systemPrompt, messages), ct).ConfigureAwait(false);
+            BuildRequestBody(_model, systemPrompt, messages, responseJsonSchema: responseJsonSchema), ct).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -150,7 +159,12 @@ public sealed class AnthropicDirectClient : ILlmClient
     /// for speed and cost: Haiku runs without extended thinking (fastest, no thinking
     /// tokens billed); Sonnet 5.5 can't disable thinking, so it runs at low effort.
     /// </summary>
-    internal static Dictionary<string, object> BuildRequestBody(string model, string systemPrompt, object messages, bool includeTuning = true)
+    internal static Dictionary<string, object> BuildRequestBody(
+        string model,
+        string systemPrompt,
+        object messages,
+        bool includeTuning = true,
+        string? responseJsonSchema = null)
     {
         var body = new Dictionary<string, object>
         {
@@ -166,14 +180,22 @@ public sealed class AnthropicDirectClient : ILlmClient
             return body;
         }
 
+        var outputConfig = new Dictionary<string, object> { ["effort"] = "low" };
+        if (responseJsonSchema is not null)
+        {
+            // Structured outputs: the API guarantees JSON matching the schema, so the
+            // pointing protocol can't silently degrade into plain prose.
+            outputConfig["format"] = new Dictionary<string, object>
+            {
+                ["type"] = "json_schema",
+                ["schema"] = System.Text.Json.Nodes.JsonNode.Parse(responseJsonSchema)!,
+            };
+        }
+        body["output_config"] = outputConfig;
+
         if (model.StartsWith("claude-haiku", StringComparison.Ordinal))
         {
             body["thinking"] = new { type = "disabled" };
-            body["output_config"] = new { effort = "low" };
-        }
-        else
-        {
-            body["output_config"] = new { effort = "low" };
         }
 
         return body;
@@ -192,7 +214,8 @@ public sealed class AnthropicDirectClient : ILlmClient
     internal static bool MentionsTuningParameter(string errorBody) =>
         errorBody.Contains("thinking", StringComparison.OrdinalIgnoreCase)
         || errorBody.Contains("output_config", StringComparison.OrdinalIgnoreCase)
-        || errorBody.Contains("effort", StringComparison.OrdinalIgnoreCase);
+        || errorBody.Contains("effort", StringComparison.OrdinalIgnoreCase)
+        || errorBody.Contains("json_schema", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Pulls the human-readable <c>error.message</c> out of an Anthropic error body,

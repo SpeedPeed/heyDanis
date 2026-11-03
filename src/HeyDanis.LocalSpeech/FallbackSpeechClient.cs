@@ -11,11 +11,13 @@ public sealed class FallbackSpeechClient : ITextToSpeechClient
 {
     private readonly PiperLocalSpeechClient _preferredClient;
     private readonly ITextToSpeechClient _fallbackClient;
+    private readonly Action<string>? _log;
 
-    public FallbackSpeechClient(PiperLocalSpeechClient preferredClient, ITextToSpeechClient fallbackClient)
+    public FallbackSpeechClient(PiperLocalSpeechClient preferredClient, ITextToSpeechClient fallbackClient, Action<string>? log = null)
     {
         _preferredClient = preferredClient;
         _fallbackClient = fallbackClient;
+        _log = log;
     }
 
     public bool IsPlaying => _preferredClient.IsPlaying || _fallbackClient.IsPlaying;
@@ -26,16 +28,24 @@ public sealed class FallbackSpeechClient : ITextToSpeechClient
         {
             try
             {
+                _log?.Invoke($"[TTS] Piper spricht {text.Length} Zeichen");
                 await _preferredClient.SpeakAsync(text, ct).ConfigureAwait(false);
+                _log?.Invoke("[TTS] Piper fertig");
                 return;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // Piper broke (e.g. corrupt model file) — fall through to the Windows voice.
+                _log?.Invoke($"[TTS] Piper-Fehler, nehme Windows-Stimme: {ex.GetType().Name}: {ex.Message}");
             }
+        }
+        else
+        {
+            _log?.Invoke("[TTS] Piper noch nicht bereit, nehme Windows-Stimme");
         }
 
         await _fallbackClient.SpeakAsync(text, ct).ConfigureAwait(false);
+        _log?.Invoke("[TTS] Windows-Stimme fertig");
     }
 
     public void StopPlayback()

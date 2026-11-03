@@ -320,7 +320,8 @@ public partial class App : Application
             return new ElevenLabsTtsClient(key, _settingsStore.ElevenLabsVoiceId, outputDeviceId);
         }
 
-        var windowsVoice = new WindowsVoiceSpeechClient(outputDeviceId, speakingRate);
+        var windowsVoice = new WindowsVoiceSpeechClient(outputDeviceId, speakingRate) { Log = DebugLog.Write };
+        DebugLog.Write($"[TTS] Stimme={choice} Gerät={(string.IsNullOrEmpty(outputDeviceId) ? "Windows-Standard" : outputDeviceId)} Windows-Stimme={windowsVoice.SelectedVoiceName}");
         if (choice == "windows")
         {
             _companionViewModel!.VoiceStatus = $"Windows-Stimme: {windowsVoice.SelectedVoiceName}";
@@ -328,7 +329,7 @@ public partial class App : Application
         }
 
         var voiceChoice = PiperVoiceChoice.FromId(choice.Replace("piper:", ""));
-        var piper = new PiperLocalSpeechClient(_localModelStore, voiceChoice, (float)speakingRate, outputDeviceId);
+        var piper = new PiperLocalSpeechClient(_localModelStore, voiceChoice, (float)speakingRate, outputDeviceId) { Log = DebugLog.Write };
         var voiceName = voiceChoice.DisplayName.Split(" (")[0];
         _companionViewModel!.VoiceStatus = $"{voiceName} – wird geladen (solange Windows-Stimme)";
         var progress = new Progress<ModelDownloadProgress>(report =>
@@ -340,7 +341,47 @@ public partial class App : Application
             status => _companionViewModel!.VoiceStatus = status,
             $"{voiceName} – bereit (lokal)",
             "Stimme");
-        return new FallbackSpeechClient(piper, windowsVoice);
+        return new FallbackSpeechClient(piper, windowsVoice, DebugLog.Write);
+    }
+
+    /// <summary>
+    /// Used by the "Stimme testen" button: speaks a short sentence with the voice and
+    /// speaker currently selected in the settings window (even before saving) and
+    /// returns a German result text — the error message if it didn't work.
+    /// </summary>
+    internal async Task<string> TestVoiceAsync(string voiceChoiceId, string outputDeviceId, double speakingRate)
+    {
+        const string testSentence = "Hallo! So klinge ich. Wenn du das hörst, passt alles.";
+        ITextToSpeechClient? client = null;
+        try
+        {
+            if (voiceChoiceId == SettingsViewModel.ElevenLabsVoiceChoiceId)
+                return "ElevenLabs kann erst nach dem Speichern getestet werden.";
+
+            if (voiceChoiceId == "windows")
+            {
+                var windowsVoice = new WindowsVoiceSpeechClient(outputDeviceId, speakingRate) { Log = DebugLog.Write };
+                client = windowsVoice;
+                await windowsVoice.SpeakAsync(testSentence);
+                return $"✓ Fertig gesprochen (Windows-Stimme: {windowsVoice.SelectedVoiceName}). Nichts gehört? Lautstärke und Ausgabegerät prüfen.";
+            }
+
+            var voiceChoice = PiperVoiceChoice.FromId(voiceChoiceId.Replace("piper:", ""));
+            var piper = new PiperLocalSpeechClient(_localModelStore, voiceChoice, (float)speakingRate, outputDeviceId) { Log = DebugLog.Write };
+            client = piper;
+            await piper.EnsureLoadedAsync();
+            await piper.SpeakAsync(testSentence);
+            return "✓ Fertig gesprochen (Piper). Nichts gehört? Lautstärke und Ausgabegerät prüfen.";
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("[TTS] Stimmtest fehlgeschlagen", ex);
+            return $"✗ Fehler: {ex.GetType().Name}: {ex.Message}";
+        }
+        finally
+        {
+            client?.Dispose();
+        }
     }
 
     /// <summary>

@@ -384,7 +384,25 @@
             </Grid>
             <Slider Minimum="0.7" Maximum="1.6" TickFrequency="0.05" IsSnapToTickEnabled="True"
                     Value="{Binding SpeakingRate, Mode=TwoWay}"
-                    Margin="0,0,0,16" />
+                    Margin="0,0,0,8" />
+            <Grid Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="VoiceTestButton"
+                        Grid.Column="0"
+                        Content="Stimme testen"
+                        Style="{StaticResource TestButton}"
+                        Click="VoiceTest_Click" />
+                <TextBlock x:Name="VoiceTestResultText"
+                           Grid.Column="1"
+                           Margin="10,0,0,0"
+                           VerticalAlignment="Center"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource TextSecondary}" />
+            </Grid>
 
             <!-- AssemblyAI (only when chosen) -->
             <StackPanel Visibility="{Binding ShowAssemblyAiKey, Converter={StaticResource BoolToVis}}">

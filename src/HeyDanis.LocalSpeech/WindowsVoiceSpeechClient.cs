@@ -28,6 +28,13 @@ public sealed class WindowsVoiceSpeechClient : ITextToSpeechClient
         SelectedVoiceName = _synthesizer.Voice?.DisplayName ?? "Standard";
     }
 
+    /// <summary>Optional diagnostic log, forwarded to the audio player.</summary>
+    public Action<string>? Log
+    {
+        get => _player.Log;
+        set => _player.Log = value;
+    }
+
     /// <summary>Name of the voice in use, shown in the settings window.</summary>
     public string SelectedVoiceName { get; }
 

@@ -56,6 +56,13 @@ public sealed class PiperLocalSpeechClient : ITextToSpeechClient
         _player = new PcmAudioPlayer(outputDeviceId);
     }
 
+    /// <summary>Optional diagnostic log, forwarded to the audio player.</summary>
+    public Action<string>? Log
+    {
+        get => _player.Log;
+        set => _player.Log = value;
+    }
+
     public bool IsReady => _tts is not null;
 
     public bool IsPlaying => _player.IsPlaying;

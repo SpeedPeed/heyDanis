@@ -18,4 +18,18 @@ public interface ILlmClient
         string systemPrompt,
         string userText,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Same as <see cref="SendAsync(IReadOnlyList{Message}, IReadOnlyList{CapturedScreen}, string, string, CancellationToken)"/>,
+    /// but asks the provider to return JSON matching <paramref name="responseJsonSchema"/>
+    /// (structured outputs). Providers without that feature just ignore the schema.
+    /// </summary>
+    IAsyncEnumerable<string> SendAsync(
+        IReadOnlyList<Message> history,
+        IReadOnlyList<CapturedScreen> screens,
+        string systemPrompt,
+        string userText,
+        string? responseJsonSchema,
+        CancellationToken ct = default)
+        => SendAsync(history, screens, systemPrompt, userText, ct);
 }

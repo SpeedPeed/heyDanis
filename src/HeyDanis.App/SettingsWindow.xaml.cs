@@ -193,6 +193,29 @@ public partial class SettingsWindow : Window
     private void ElevenLabsLink_Click(object sender, RoutedEventArgs e)
         => OpenUrl("https://elevenlabs.io/app/settings/api-keys");
 
+    // -- Voice test --
+
+    private async void VoiceTest_Click(object sender, RoutedEventArgs e)
+    {
+        VoiceTestButton.IsEnabled = false;
+        VoiceTestResultText.Foreground = (Brush)FindResource("TextSecondary");
+        VoiceTestResultText.Text = "Spricht … (beim ersten Mal wird die Stimme evtl. erst geladen)";
+        try
+        {
+            var app = (App)Application.Current;
+            var result = await app.TestVoiceAsync(
+                _viewModel.SelectedVoiceId,
+                _viewModel.SelectedSpeakerDeviceId,
+                _viewModel.SpeakingRate);
+            VoiceTestResultText.Text = result;
+            VoiceTestResultText.Foreground = (Brush)FindResource(result.StartsWith("✗") ? "Failure" : "Success");
+        }
+        finally
+        {
+            VoiceTestButton.IsEnabled = true;
+        }
+    }
+
     // -- Save / Quit --
 
     private void Save_Click(object sender, RoutedEventArgs e) => _viewModel.Save();

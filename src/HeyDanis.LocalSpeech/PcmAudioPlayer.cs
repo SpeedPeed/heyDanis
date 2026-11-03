@@ -11,6 +11,9 @@ internal sealed class PcmAudioPlayer : IDisposable
 {
     private readonly string? _outputDeviceId;
     private readonly object _lock = new();
+
+    /// <summary>Optional diagnostic log (device, format, duration, playback errors).</summary>
+    public Action<string>? Log { get; set; }
     private IWavePlayer? _wavePlayer;
     private MMDevice? _wasapiDevice;
     private TaskCompletionSource<bool>? _playbackCompletion;
@@ -52,9 +55,20 @@ internal sealed class PcmAudioPlayer : IDisposable
             _wavePlayer = player;
             _wasapiDevice = device;
             _playbackCompletion = completion;
-            player.PlaybackStopped += (_, _) => completion.TrySetResult(true);
+            player.PlaybackStopped += (_, stoppedArgs) =>
+            {
+                if (stoppedArgs.Exception is not null)
+                {
+                    Log?.Invoke($"[AUDIO] Wiedergabe-Fehler: {stoppedArgs.Exception.Message}");
+                    completion.TrySetException(stoppedArgs.Exception);
+                    return;
+                }
+                completion.TrySetResult(true);
+            };
             player.Init(provider);
             player.Play();
+            Log?.Invoke($"[AUDIO] spiele {pcmBytes.Length / Math.Max(1, format.AverageBytesPerSecond):0.0}s " +
+                        $"{format.SampleRate}Hz/{format.BitsPerSample}bit über {(device is null ? "Windows-Standard (WaveOut)" : device.FriendlyName)}");
         }
 
         using var registration = ct.Register(() =>

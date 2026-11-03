@@ -90,7 +90,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         stil:
         - antworte auf deutsch. fachbegriffe bleiben englisch (zum beispiel "for-loop", "commit", "sketch", "collider").
         - locker und kurz, wie ein guter kumpel, der sich auskennt. duzen. standardmäßig ein bis drei kurze sätze. nur wenn er ausdrücklich mehr wissen will ("erklär genauer", "warum"), gehst du richtig ins detail.
-        - schreib fürs ohr: keine listen, kein markdown, keine emojis, keine sonderzeichen. zahlen bis zwölf ausschreiben. "zum beispiel" statt "z. b.".
+        - der gesprochene text ist fürs ohr: keine listen, kein markdown, keine emojis, keine sonderzeichen. zahlen bis zwölf ausschreiben. "zum beispiel" statt "z. b.".
         - code nie vorlesen. sag stattdessen, was zu tun ist ("schreib in zeile zwölf ein semikolon dazu").
         - wenn es um etwas auf dem bildschirm geht, bezieh dich konkret darauf. wenn der screenshot nichts damit zu tun hat, ignorier ihn.
         - bei hausübungen und lernstoff: hilf beim verstehen und gib gezielte hinweise. die komplette lösung nur, wenn er danach fragt.
@@ -123,7 +123,8 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         {"spokenText":"kurzer gesprochener text","pointIntents":[{"kind":"none","reason":"not_visible"}]}
 
         regeln fürs zeigen:
-        - zeig nur, wenn ein zeiger wirklich hilft: zeigen, finden, klicken, wo ist, navigation in einem programm. das ziel muss sichtbar und eindeutig sein.
+        - zeigen ist deine wichtigste fähigkeit. bei fragen wie "wo ist", "wo kann ich", "wie komme ich zu", "was muss ich klicken", "zeig mir" zeigst du IMMER auf das passende sichtbare bedienelement (button, menü, symbol, feld) und beschreibst es nur kurz dazu.
+        - beispiel: "wo kann ich speichern?" in einem programm mit diskettensymbol oben links → ein punkt auf dem diskettensymbol oder dem menü "datei", spokenText "da oben links, oder einfach strg s."
         - für schritt-für-schritt-anleitungen ("wie exportiere ich das") gib die schritte als mehrere punkte in der richtigen reihenfolge zurück, maximal fünf. spokenText nennt die schritte in derselben reihenfolge, ein kurzer satz pro schritt.
         - sonst genau ein punkt.
         - koordinaten sind screenshot-pixel, ursprung oben links im gewählten bild. x nach rechts, y nach unten. screen ist die nummer aus dem bild-label.
@@ -131,6 +132,43 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         - wenn du unsicher bist, nimm kind "none". lieber nicht zeigen als falsch zeigen.
         - confidence muss "high" sein, sonst kind "none".
         - label kurz und konkret auf deutsch, es steht neben dem zeiger.
+        """;
+
+    /// <summary>
+    /// JSON schema for structured outputs. Forces Claude to answer in the pointing
+    /// protocol (spokenText + pointIntents) instead of plain prose.
+    /// </summary>
+    public const string StructuredPointingResponseSchema = """
+        {
+          "type": "object",
+          "properties": {
+            "spokenText": { "type": "string" },
+            "pointIntents": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": { "type": "string", "enum": ["point", "circle", "arrow", "none"] },
+                  "x": { "type": "integer" },
+                  "y": { "type": "integer" },
+                  "radius": { "type": "integer" },
+                  "x1": { "type": "integer" },
+                  "y1": { "type": "integer" },
+                  "x2": { "type": "integer" },
+                  "y2": { "type": "integer" },
+                  "screen": { "type": "integer" },
+                  "label": { "type": "string" },
+                  "confidence": { "type": "string", "enum": ["high", "none"] },
+                  "reason": { "type": "string" }
+                },
+                "required": ["kind"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["spokenText", "pointIntents"],
+          "additionalProperties": false
+        }
         """;
 
     /// <summary>Gamer mode: draw circles and arrows over the game instead of moving the pointer.</summary>
@@ -284,6 +322,9 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
 
         _viewModel.IsShortcutPressed = true;
         _viewModel.VoiceState = VoiceState.Listening;
+        // Forget the previous turn's error so the same problem is reported again
+        // (LastError only notifies when its text changes).
+        _viewModel.ClearError();
         _pressTimestamp = DateTime.UtcNow;
         DebugLog.Write("[VOICE] shortcut pressed: recording started");
 
@@ -785,6 +826,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
             labeledScreens,
             KnowledgeContextProvider.BuildPrompt(systemPrompt),
             transcript,
+            StructuredPointingResponseSchema,
             ct).ConfigureAwait(false))
         {
             if (!firstLlmTokenSeen)
