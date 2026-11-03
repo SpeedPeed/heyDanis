@@ -44,6 +44,10 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
   Diktat via Whisper → Zwischenablage + Strg+V (`FocusedTextInserter`, alte Zwischenablage wird
   wiederhergestellt, injizierte Tasten ignoriert der Hook), Kreise/Pfeile auch außerhalb des Gamer-Modus.
   Multi-Monitor-Zeigen war schon im Fork vorhanden (screenN) – vom Nutzer noch nicht getestet.
+- **M4-Test:** Textbox ✅, Diktat ✅, Schritt-für-Schritt ✅, Markieren ❌ (Kreise ein Wort daneben),
+  zweiter Monitor: sieht ihn, Cursor bleibt aber auf dem Maus-Monitor. Fix: Zoom-Verfeinerung liefert
+  jetzt einen Rahmen (Kreise/Pfeile/Punkte), `screen` im Schema Pflicht, Bild-Beschriftung VOR dem Bild.
+  Falls Monitor 2 weiter nicht klappt: `[POINT] overlay: matched overlay index=…`-Zeilen aus debug.log prüfen.
 - Als Nächstes: Nutzer testet M4 → danach **M5** (Agent-Modus; Claude-CLI muss installiert sein).
 
 ## Ansprüche (vom Nutzer)
