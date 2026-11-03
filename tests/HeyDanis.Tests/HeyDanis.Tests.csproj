@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\HeyDanis.Overlay\HeyDanis.Overlay.csproj" />
     <ProjectReference Include="..\..\src\HeyDanis.Api\HeyDanis.Api.csproj" />
     <ProjectReference Include="..\..\src\HeyDanis.Pointing\HeyDanis.Pointing.csproj" />
+    <ProjectReference Include="..\..\src\HeyDanis.LocalSpeech\HeyDanis.LocalSpeech.csproj" />
   </ItemGroup>
 
   <ItemGroup>
