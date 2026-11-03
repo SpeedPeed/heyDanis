@@ -70,6 +70,21 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
 - [ ] M4 Overlay/Zeigen Multi-Monitor, Markierungen, Text-Eingabe, Diktat
 - [ ] M5 Agent-Modus (parallel, Status, Benachrichtigung, Bestätigung)
 - [ ] M6 Persönlichkeit, Extras, Autostart, Installer
+- [ ] M7 (später, Wunsch des Nutzers) Android-Version für **Pixel 8 Pro** – erst nach M6
+
+## Plan M7: Android-Version (Pixel 8 Pro)
+Eigenes Projekt (Kotlin + Jetpack Compose), eigener Ordner `android/` oder eigenes Repo.
+Vom PC übernehmbar: Prompts, Pointing-Protokoll (JSON), Kostenlogik.
+- **Auslösen:** heyDanis als **Standard-Assistent** registrieren (VoiceInteractionService) →
+  Ecke wischen / Power lang drücken. Vorteil: Android liefert dabei selbst einen Screenshot
+  (`onHandleScreenshot`), ohne MediaProjection-Dialog. Zusätzlich optional ein schwebender
+  Push-to-Talk-Button (Overlay-Berechtigung).
+- **Zeigen:** Overlay-Fenster (`SYSTEM_ALERT_WINDOW`) mit dem orangen Buddy-Cursor über anderen Apps.
+- **Sprache gratis & lokal:** Android `SpeechRecognizer` (on-device, Deutsch) und
+  `TextToSpeech` (Google-Stimmen, männlich Deutsch, offline) – kein Whisper/Piper nötig.
+- **LLM:** Claude Haiku 5.5 mit dem eigenen API-Key, gespeichert im Android Keystore.
+- **Verteilung:** GitHub Actions baut die APK, Installation per Sideload (kein Play Store, gratis).
+- Kein iPhone-Support geplant (Apple erlaubt kein Overlay/fremde Screenshots).
 
 ## Hinweise für neue Sessions
 - Upstream-Code zum Nachschauen: `git clone --depth 1 https://github.com/rickkdev/clicky`
