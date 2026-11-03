@@ -153,6 +153,7 @@ public partial class App : Application
 
         // Install the global push-to-talk hook on the dispatcher thread.
         _pushToTalkHook = new GlobalPushToTalkHook(_companionViewModel!.PushToTalkShortcut);
+        _pushToTalkHook.TextInputRequested += OnTextInputRequested;
         _pushToTalkHook.Start();
 
         // Create transparent overlay windows for each monitor (US-011).
@@ -533,6 +534,27 @@ public partial class App : Application
             {
                 _companionViewModel.HasScreenCapturePermission = granted;
             }
+        });
+    }
+
+    private TextQuestionWindow? _textQuestionWindow;
+
+    /// <summary>Strg+Alt+Leertaste: open (or re-focus) the text question box.</summary>
+    private void OnTextInputRequested(object? sender, EventArgs e)
+    {
+        // Runs inside the keyboard hook — post the UI work instead of doing it here.
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (_textQuestionWindow is not null)
+            {
+                _textQuestionWindow.Activate();
+                return;
+            }
+
+            _textQuestionWindow = new TextQuestionWindow();
+            _textQuestionWindow.QuestionSubmitted += (_, question) => _companionManager?.AskTypedQuestion(question);
+            _textQuestionWindow.Closed += (_, _) => _textQuestionWindow = null;
+            _textQuestionWindow.Show();
         });
     }
 

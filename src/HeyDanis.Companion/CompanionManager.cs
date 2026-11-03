@@ -617,6 +617,19 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
     }
 
     /// <summary>
+    /// A question typed into the text box (Strg+Alt+Leertaste). Goes through exactly the same
+    /// pipeline as a spoken question: fresh screenshot, Claude, voice, bubble, pointing.
+    /// </summary>
+    public void AskTypedQuestion(string question)
+    {
+        if (string.IsNullOrWhiteSpace(question)) return;
+        DebugLog.Write($"[TEXT] typed question chars={question.Length}");
+        _viewModel.ClearError();
+        _overlayManager?.HideResponseText();
+        SendTranscriptToClaudeWithScreenshot(question.Trim());
+    }
+
+    /// <summary>
     /// Captures screenshots, sends transcript + images to Claude, streams response,
     /// then plays TTS. Mirrors <c>sendTranscriptToClaudeWithScreenshot</c> on Mac.
     /// </summary>
