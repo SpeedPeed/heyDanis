@@ -49,8 +49,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force publish/update | Out-Null
+          # heyDanis' own files + the small WebView2 libraries of the explanation board.
           Get-ChildItem publish/win-x64 -File |
-            Where-Object { $_.Name -like 'heyDanis*' } |
+            Where-Object { $_.Name -like 'heyDanis*' -or $_.Name -like 'Microsoft.Web.WebView2*' -or $_.Name -like 'WebView2Loader*' } |
             Copy-Item -Destination publish/update
           Get-ChildItem publish/update | Format-Table Name, Length
 
