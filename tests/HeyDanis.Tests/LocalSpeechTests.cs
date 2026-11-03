@@ -87,17 +87,75 @@ public class LocalSpeechTests : IDisposable
         Assert.Contains(reports, report => report.Percent == 100);
     }
 
-    private sealed class CountingHandler : HttpMessageHandler
+    [Fact]
+    public async Task ConcurrentRequestsForTheSameModel_DownloadOnlyOnce()
     {
-        private readonly byte[] _payload;
-        public int RequestCount { get; private set; }
+        var handler = new CountingHandler(new byte[] { 9, 8, 7 }, delay: TimeSpan.FromMilliseconds(200));
+        var store = new LocalModelStore(_tempDir, new HttpClient(handler));
+        var uri = new Uri("https://example.test/shared.bin");
 
-        public CountingHandler(byte[] payload) => _payload = payload;
+        var first = store.EnsureFileAsync("shared.bin", uri, "Test", null, CancellationToken.None);
+        var second = store.EnsureFileAsync("shared.bin", uri, "Test", null, CancellationToken.None);
+        var paths = await Task.WhenAll(first, second);
+
+        Assert.Equal(paths[0], paths[1]);
+        Assert.Equal(1, handler.RequestCount);
+    }
+
+    [Fact]
+    public async Task PartialDownload_IsResumedWithRangeRequest()
+    {
+        Directory.CreateDirectory(_tempDir);
+        await File.WriteAllBytesAsync(Path.Combine(_tempDir, "resume.bin.download"), new byte[] { 1, 2 });
+        var handler = new RangeHandler(new byte[] { 1, 2, 3, 4, 5 });
+        var store = new LocalModelStore(_tempDir, new HttpClient(handler));
+
+        var path = await store.EnsureFileAsync("resume.bin", new Uri("https://example.test/resume.bin"), "Test", null, CancellationToken.None);
+
+        Assert.Equal(2, handler.RequestedRangeStart);
+        Assert.Equal(new byte[] { 1, 2, 3, 4, 5 }, await File.ReadAllBytesAsync(path));
+    }
+
+    private sealed class RangeHandler : HttpMessageHandler
+    {
+        private readonly byte[] _fullPayload;
+        public long? RequestedRangeStart { get; private set; }
+
+        public RangeHandler(byte[] fullPayload) => _fullPayload = fullPayload;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            RequestCount++;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(_payload) });
+            RequestedRangeStart = request.Headers.Range?.Ranges.First().From;
+            if (RequestedRangeStart is { } start)
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.PartialContent)
+                {
+                    Content = new ByteArrayContent(_fullPayload[(int)start..]),
+                });
+            }
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(_fullPayload) });
+        }
+    }
+
+    private sealed class CountingHandler : HttpMessageHandler
+    {
+        private readonly byte[] _payload;
+        private readonly TimeSpan _delay;
+        private int _requestCount;
+        public int RequestCount => _requestCount;
+
+        public CountingHandler(byte[] payload, TimeSpan delay = default)
+        {
+            _payload = payload;
+            _delay = delay;
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _requestCount);
+            if (_delay > TimeSpan.Zero)
+                await Task.Delay(_delay, cancellationToken);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(_payload) };
         }
     }
 

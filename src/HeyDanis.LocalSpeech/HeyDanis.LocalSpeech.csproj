@@ -17,7 +17,9 @@
   <ItemGroup>
     <PackageReference Include="Whisper.net" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
-    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="2.0.1" />
+    <!-- Stay on 1.x: sherpa-onnx 2.0 removed the built-in espeak-ng phonemizer, so Piper
+         voices produce zero samples (silence) without an external phonemizer. -->
+    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.8" />
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
     <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>

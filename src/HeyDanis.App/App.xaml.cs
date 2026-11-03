@@ -369,6 +369,15 @@ public partial class App : Application
             var voiceChoice = PiperVoiceChoice.FromId(voiceChoiceId.Replace("piper:", ""));
             var piper = new PiperLocalSpeechClient(_localModelStore, voiceChoice, (float)speakingRate, outputDeviceId) { Log = DebugLog.Write };
             client = piper;
+            if (!piper.IsDownloaded)
+            {
+                // Don't make the user stare at "Spricht …" for minutes on slow internet.
+                var running = LocalModelStore.GetRunningDownloadProgress(piper.VoiceDirectory);
+                if (running is null)
+                    _ = piper.EnsureLoadedAsync(); // shared with any other download of this voice
+                var percentText = running?.Percent is { } percent ? $" ({percent} %)" : "";
+                return $"Die Stimme wird noch heruntergeladen{percentText}. Bis sie fertig ist, spricht heyDanis mit der Windows-Stimme. Fortschritt steht im Hauptfenster.";
+            }
             await piper.EnsureLoadedAsync();
             await piper.SpeakAsync(testSentence);
             return "✓ Fertig gesprochen (Piper). Nichts gehört? Lautstärke und Ausgabegerät prüfen.";

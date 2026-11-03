@@ -65,6 +65,12 @@ public sealed class PiperLocalSpeechClient : ITextToSpeechClient
 
     public bool IsReady => _tts is not null;
 
+    /// <summary>Folder the voice is (or will be) extracted to.</summary>
+    public string VoiceDirectory => Path.Combine(_modelStore.ModelsDirectory, _voiceChoice.ArchiveName);
+
+    /// <summary>True once the voice archive is fully downloaded and extracted.</summary>
+    public bool IsDownloaded => File.Exists(Path.Combine(VoiceDirectory, ".complete"));
+
     public bool IsPlaying => _player.IsPlaying;
 
     /// <summary>Downloads (first run only) and loads the voice in the background.</summary>
@@ -93,8 +99,21 @@ public sealed class PiperLocalSpeechClient : ITextToSpeechClient
             config.Model.Provider = "cpu";
             config.Model.Debug = 0;
             config.MaxNumSentences = 1;
-            return new OfflineTts(config);
+
+            var modelPath = config.Model.Vits.Model;
+            if (!File.Exists(modelPath) || !File.Exists(config.Model.Vits.Tokens) || !Directory.Exists(config.Model.Vits.DataDir))
+                throw new FileNotFoundException($"Piper-Stimme unvollständig in {voiceDirectory} – Ordner löschen, dann wird sie neu geladen.");
+
+            var tts = new OfflineTts(config);
+            // sherpa-onnx returns an empty handle instead of throwing when the model can't be loaded.
+            if (tts.SampleRate <= 0)
+            {
+                tts.Dispose();
+                throw new InvalidOperationException($"Piper-Stimme konnte nicht geladen werden ({modelPath}).");
+            }
+            return tts;
         }, ct).ConfigureAwait(false);
+        Log?.Invoke($"[TTS] Piper geladen: {_voiceChoice.Id}, {_tts.SampleRate} Hz");
     }
 
     public async Task SpeakAsync(string text, CancellationToken ct = default)
@@ -151,13 +170,32 @@ public sealed class PiperLocalSpeechClient : ITextToSpeechClient
         await _synthesisLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            return await Task.Run(() => _tts!.Generate(sentence, _speakingRate, 0).Samples, ct).ConfigureAwait(false);
+            var samples = await Task.Run(() =>
+            {
+                var audio = _tts!.Generate(sentence, _speakingRate, 0);
+                try
+                {
+                    return audio.Samples;
+                }
+                finally
+                {
+                    audio.Dispose(); // frees the native buffer (not IDisposable in sherpa-onnx)
+                }
+            }, ct).ConfigureAwait(false);
+
+            var peak = samples.Length == 0 ? 0f : samples.Max(Math.Abs);
+            Log?.Invoke($"[TTS] Piper: \"{Shorten(sentence)}\" → {samples.Length} Samples, Pegel {peak:0.00}");
+            if (samples.Length == 0 || peak < 0.001f)
+                throw new InvalidOperationException("Piper hat kein hörbares Audio erzeugt.");
+            return samples;
         }
         finally
         {
             _synthesisLock.Release();
         }
     }
+
+    private static string Shorten(string text) => text.Length <= 40 ? text : text[..40] + "…";
 
     internal static IReadOnlyList<string> SplitIntoSentences(string text) =>
         SentenceSplitter.Split(text.Trim())
