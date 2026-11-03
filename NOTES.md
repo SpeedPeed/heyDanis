@@ -54,6 +54,11 @@ https://github.com/rickkdev/clicky (MIT, ursprünglich https://github.com/farzaa
   Whisper statt Streaming-STT). Gratis-Fix: **Windows-OCR-Snapping** (`ScreenTextRecognizer` +
   `TextTargetMatcher`): Claude nennt nur den Text, OCR liefert die exakte Position. Kostenpflichtige
   Optionen (Sonnet fürs Zeigen, ElevenLabs, AssemblyAI) dem Nutzer zur Entscheidung vorgelegt.
+- **Dritter Markier-Test:** Monitor 1 näher, aber nicht exakt; Monitor 2: Kreis auf richtigem Monitor,
+  aber weit daneben/zu groß → Verdacht **Mixed-DPI** (WPF positioniert Overlay mit DPI von Monitor 1).
+  Fix: Overlay per `SetWindowPos` in physischen Pixeln + echte Fenster-DPI. Neu im Tray: „Monitor-Test
+  (Kreise)“ und „Diagnose kopieren“ (relevante Logzeilen + Monitorinfo in die Zwischenablage).
+  Offene Frage an Nutzer: Skalierung beider Monitore, Ergebnis Monitor-Test, Wahl der Upgrades A–D.
 - Als Nächstes: Nutzer testet M4 → danach **M5** (Agent-Modus; Claude-CLI muss installiert sein).
 
 ## Ansprüche (vom Nutzer)
