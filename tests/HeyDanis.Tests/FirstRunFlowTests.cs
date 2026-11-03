@@ -154,7 +154,7 @@ public class FirstRunFlowTests : IDisposable
         Assert.NotNull(vm.AnthropicKeyError);
 
         // User enters the key — error should clear.
-        vm.AnthropicApiKey = "sk-new";
+        vm.AnthropicApiKey = "sk-ant-api03-new";
 
         Assert.Null(vm.AnthropicKeyError);
     }
