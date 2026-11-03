@@ -558,6 +558,26 @@
             <!-- Separator -->
             <Border Height="0.5" Background="{StaticResource BorderSubtle}" Margin="0,0,0,16" />
 
+            <!-- Explanation board -->
+            <TextBlock Text="ERKLÄR-TAFEL"
+                       FontSize="10" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextTertiary}"
+                       Margin="0,0,0,6" />
+            <TextBlock Text="Sag z. B. „Zeichne mir das an die Tafel“ oder „Zeig mir das in 3D“."
+                       FontSize="11"
+                       Foreground="{StaticResource TextTertiary}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,8" />
+            <ComboBox Style="{StaticResource DarkComboBox}"
+                      ItemsSource="{Binding BoardGeneratorChoices}"
+                      DisplayMemberPath="Display"
+                      SelectedValuePath="Value"
+                      SelectedValue="{Binding SelectedBoardGeneratorId, Mode=TwoWay}"
+                      Margin="0,0,0,16" />
+
+            <!-- Separator -->
+            <Border Height="0.5" Background="{StaticResource BorderSubtle}" Margin="0,0,0,16" />
+
             <!-- Precise pointing -->
             <TextBlock Text="ZEIGEN"
                        FontSize="10" FontWeight="SemiBold"

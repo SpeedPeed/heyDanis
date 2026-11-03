@@ -136,6 +136,13 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         - confidence muss "high" sein, sonst kind "none".
         - label kurz und konkret auf deutsch, es steht neben dem zeiger.
 
+        erklär-tafel:
+        - du hast eine erklär-tafel: ein eigenes fenster, auf dem eine ausführliche visuelle erklärung erscheint (zeichnungen, formeln, diagramme, interaktive 3d-modelle). sie wird in ca. 20–60 sekunden erstellt.
+        - setz showBoard auf true, wenn der nutzer etwas gezeichnet, skizziert, visualisiert, an der tafel oder in 3d erklärt haben will ("zeichne", "an der tafel", "zeig mir das in 3d", "skizzier", "mach mir eine grafik"), oder wenn ein thema aus mathe, physik, technik, cad oder informatik mit einer zeichnung deutlich besser zu verstehen ist und er eine erklärung will.
+        - dann: spokenText kurz, z. b. "moment, ich zeichne dir das an die tafel." plus höchstens einen satz vorab-erklärung. boardTopic: genaue beschreibung, was auf die tafel soll (thema, was gezeigt werden soll, beispiele, ob 3d). keine zeiger dazu (kind "none").
+        - boardMode "update", wenn eine tafel offen ist und der nutzer sie ändern oder ergänzen will ("mach das größer", "zeig noch …", "dreh das"); sonst "new".
+        - für einfache fragen, zeigen auf dem bildschirm oder smalltalk: showBoard false.
+
         markierungen:
         - wenn der nutzer etwas markiert, eingekreist oder mit pfeil gezeigt haben will ("kreis ein", "markier", "zeig mit pfeil", "wo sind die fehler"), nimm kind "circle" (x, y = mitte, radius in screenshot-pixeln, eng um das ziel) oder kind "arrow" (x1,y1 = ende, x2,y2 = spitze). auch dafür screen, label und confidence "high" angeben.
         - mehrere fehler oder stellen: mehrere kreise, maximal fünf.
@@ -151,6 +158,9 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
           "type": "object",
           "properties": {
             "spokenText": { "type": "string" },
+            "showBoard": { "type": "boolean" },
+            "boardTopic": { "type": "string" },
+            "boardMode": { "type": "string", "enum": ["new", "update"] },
             "pointIntents": {
               "type": "array",
               "items": {
@@ -206,6 +216,12 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
     /// that requires the user to open Settings and fix their configuration.
     /// </summary>
     public event EventHandler? OpenSettingsRequested;
+
+    /// <summary>Raised when Claude decided the answer belongs on the explanation board.</summary>
+    public event EventHandler<HeyDanis.Companion.Board.BoardRequest>? BoardRequested;
+
+    /// <summary>Returns the topic of the board currently open (or null), so Claude can update it.</summary>
+    public Func<string?>? CurrentBoardTopicProvider { get; set; }
 
     public CompanionManager(
         CompanionViewModel viewModel,
@@ -947,7 +963,7 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
                     historySnapshot,
                     labeledScreens,
                     KnowledgeContextProvider.BuildPrompt(systemPrompt),
-                    transcript,
+                    WithBoardContext(transcript),
                     StructuredPointingResponseSchema,
                     ct).ConfigureAwait(false))
                 {
@@ -1000,6 +1016,20 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         if (_conversationHistory.Count > MaxConversationHistory)
         {
             _conversationHistory.RemoveRange(0, _conversationHistory.Count - MaxConversationHistory);
+        }
+
+        var boardIntent = ParseBoardIntent(responseBuilder.ToString());
+        if (boardIntent.Show && !gamerModeEnabled)
+        {
+            DebugLog.Write($"[BOARD] requested mode={(boardIntent.Update ? "update" : "new")} topic=\"{boardIntent.Topic}\"");
+            var boardRequest = new HeyDanis.Companion.Board.BoardRequest(
+                Question: transcript,
+                Topic: string.IsNullOrWhiteSpace(boardIntent.Topic) ? transcript : boardIntent.Topic,
+                UpdateExisting: boardIntent.Update,
+                PreviousHtml: null, // filled in by the app, which owns the open board
+                History: historySnapshot,
+                CursorScreen: screens.FirstOrDefault(screen => screen.IsCursorScreen) ?? screens.FirstOrDefault());
+            await _dispatcher.InvokeAsync(() => BoardRequested?.Invoke(this, boardRequest));
         }
 
         // Speak first, then point: the voice starts right away while the (optional) zoom
@@ -1312,6 +1342,40 @@ public sealed class CompanionManager : IAsyncDisposable, IDisposable
         catch (System.Text.Json.JsonException)
         {
             return false;
+        }
+    }
+
+    /// <summary>Tells Claude which board is open, so "mach das größer" can update it.</summary>
+    private string WithBoardContext(string transcript)
+    {
+        var openBoardTopic = CurrentBoardTopicProvider?.Invoke();
+        return string.IsNullOrWhiteSpace(openBoardTopic)
+            ? transcript
+            : $"{transcript}\n\n(info für dich: die erklär-tafel ist gerade offen und zeigt: {openBoardTopic})";
+    }
+
+    internal readonly record struct BoardIntent(bool Show, string Topic, bool Update);
+
+    /// <summary>Reads showBoard / boardTopic / boardMode from the structured answer.</summary>
+    internal static BoardIntent ParseBoardIntent(string json)
+    {
+        try
+        {
+            var start = json.IndexOf('{');
+            var end = json.LastIndexOf('}');
+            if (start < 0 || end <= start) return default;
+            using var doc = System.Text.Json.JsonDocument.Parse(json[start..(end + 1)]);
+            var root = doc.RootElement;
+            var show = root.TryGetProperty("showBoard", out var showProp) && showProp.ValueKind == System.Text.Json.JsonValueKind.True;
+            var topic = root.TryGetProperty("boardTopic", out var topicProp) && topicProp.ValueKind == System.Text.Json.JsonValueKind.String
+                ? topicProp.GetString() ?? ""
+                : "";
+            var update = root.TryGetProperty("boardMode", out var modeProp) && modeProp.GetString() == "update";
+            return new BoardIntent(show, topic.Trim(), update);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return default;
         }
     }
 

@@ -203,6 +203,7 @@ public partial class App : Application
         if (_companionManager is not null)
         {
             _companionManager.OpenSettingsRequested -= OnPipelineKeyError;
+            _companionManager.BoardRequested -= OnBoardRequested;
             _companionManager.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2));
             _companionManager = null;
         }
@@ -226,6 +227,8 @@ public partial class App : Application
             useRedesignedPointingProtocol: UseRedesignedPointingProtocolByDefault,
             precisePointingEnabled: _settingsStore.PrecisePointingEnabled);
         _companionManager.OpenSettingsRequested += OnPipelineKeyError;
+        _companionManager.BoardRequested += OnBoardRequested;
+        _companionManager.CurrentBoardTopicProvider = () => _boardWindow is not null ? _boardTopic : null;
         _companionManager.Start();
     }
 
@@ -572,6 +575,82 @@ public partial class App : Application
         }
     }
 
+    // ── Explanation board ("Erklär-Tafel") ──
+
+    private ExplanationBoardWindow? _boardWindow;
+    private string? _boardTopic;
+    private string? _boardHtml;
+    private CancellationTokenSource? _boardGenerationCts;
+
+    private HeyDanis.Companion.Board.IBoardGenerator BuildBoardGenerator()
+    {
+        if (_settingsStore!.BoardGeneratorChoice == "sonnet-api")
+        {
+            var apiKey = _secretsStore!.Read(SecretsStore.AnthropicApiKey) ?? "";
+            return new HeyDanis.Companion.Board.ApiBoardGenerator(apiKey, _usageCostTracker.Record);
+        }
+        return new HeyDanis.Companion.Board.ClaudeCodeCliBoardGenerator();
+    }
+
+    /// <summary>
+    /// Opens the board with a waiting animation right away, then lets Claude write the page.
+    /// A newer request replaces an older one that is still being generated.
+    /// </summary>
+    private async void OnBoardRequested(object? sender, HeyDanis.Companion.Board.BoardRequest request)
+    {
+        _boardGenerationCts?.Cancel();
+        var generationCts = new CancellationTokenSource();
+        _boardGenerationCts = generationCts;
+
+        if (_boardWindow is null)
+        {
+            _boardWindow = new ExplanationBoardWindow();
+            _boardWindow.Closed += (_, _) =>
+            {
+                _boardWindow = null;
+                _boardTopic = null;
+                _boardHtml = null;
+                _boardGenerationCts?.Cancel();
+            };
+            _boardWindow.Show();
+        }
+        _boardWindow.Activate();
+
+        var generator = BuildBoardGenerator();
+        var window = _boardWindow;
+        var fullRequest = request with { PreviousHtml = request.UpdateExisting ? _boardHtml : null };
+        await window.ShowLoadingAsync(request.Topic, generator.WaitingHint);
+
+        try
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var html = await Task.Run(() => generator.GenerateHtmlAsync(fullRequest, generationCts.Token));
+            if (generationCts.IsCancellationRequested || _boardWindow != window) return;
+
+            DebugLog.Write($"[BOARD] ready after {stopwatch.Elapsed.TotalSeconds:0}s, {html.Length} chars");
+            _boardHtml = html;
+            _boardTopic = request.Topic;
+            await window.ShowHtmlAsync(html);
+            _overlayManager?.ShowResponseText("Die Tafel ist fertig – schau sie dir an. Mit ←/→ gehst du durch die Schritte.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Replaced by a newer request or the board was closed.
+        }
+        catch (HeyDanis.Companion.Board.BoardGenerationException problem)
+        {
+            DebugLog.Write($"[BOARD] failed: {problem.Message}");
+            if (_boardWindow == window)
+                await window.ShowErrorAsync(problem.Message);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("[BOARD] failed", ex);
+            if (_boardWindow == window)
+                await window.ShowErrorAsync($"Unerwarteter Fehler: {ex.Message}");
+        }
+    }
+
     private TextQuestionWindow? _textQuestionWindow;
 
     /// <summary>Strg+Alt+Leertaste: open (or re-focus) the text question box.</summary>
@@ -783,6 +862,7 @@ public partial class App : Application
         if (_companionManager is not null)
         {
             _companionManager.OpenSettingsRequested -= OnPipelineKeyError;
+            _companionManager.BoardRequested -= OnBoardRequested;
             try { _companionManager.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2)); } catch { }
             _companionManager = null;
         }
@@ -810,6 +890,8 @@ public partial class App : Application
             _trayIconManager.Dispose();
             _trayIconManager = null;
         }
+        _boardGenerationCts?.Cancel();
+        _boardWindow?.Close();
         _pointingSmokeWindow?.Close();
         _pointingSmokeWindow = null;
         _companionPanel?.Close();

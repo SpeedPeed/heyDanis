@@ -83,6 +83,13 @@ public class SettingsStore
         set { lock (_lock) { _data.PrecisePointingEnabled = value; Save(); } }
     }
 
+    /// <summary>How the explanation board is generated: "abo" (Claude Code CLI, free) or "sonnet-api".</summary>
+    public string BoardGeneratorChoice
+    {
+        get { lock (_lock) return _data.BoardGeneratorChoice; }
+        set { lock (_lock) { _data.BoardGeneratorChoice = value; Save(); } }
+    }
+
     public bool OnboardingComplete
     {
         get { lock (_lock) return _data.OnboardingComplete; }
@@ -179,6 +186,9 @@ public class SettingsStore
 
         [JsonPropertyName("precisePointingEnabled")]
         public bool PrecisePointingEnabled { get; set; } = true;
+
+        [JsonPropertyName("boardGeneratorChoice")]
+        public string BoardGeneratorChoice { get; set; } = "abo";
 
         [JsonPropertyName("onboardingComplete")]
         public bool OnboardingComplete { get; set; }

@@ -31,16 +31,24 @@ public sealed class AnthropicDirectClient : ILlmClient
     private readonly HttpClient _http;
     private readonly string _model;
     private readonly Action<LlmUsage>? _onUsageReported;
+    private readonly int _maxTokens;
+    private readonly string _effort;
 
     /// <param name="onUsageReported">Called once per request with the token usage (for cost tracking).</param>
+    /// <param name="maxTokens">Output cap; short spoken answers need little, a board page needs a lot.</param>
+    /// <param name="effort">Reasoning effort ("low" for voice answers, "medium" for the board).</param>
     public AnthropicDirectClient(
         string apiKey,
         string model = "claude-haiku-5-5",
         HttpClient? httpClient = null,
-        Action<LlmUsage>? onUsageReported = null)
+        Action<LlmUsage>? onUsageReported = null,
+        int maxTokens = 1024,
+        string effort = "low")
     {
         _model = model;
         _onUsageReported = onUsageReported;
+        _maxTokens = maxTokens;
+        _effort = effort;
 
         _http = httpClient ?? new HttpClient
         {
@@ -80,7 +88,7 @@ public sealed class AnthropicDirectClient : ILlmClient
         var messages = BuildMessages(history, screens, userText, includeImageTransformations: true);
 
         var response = await SendMessagesRequestAsync(
-            BuildRequestBody(_model, systemPrompt, messages, responseJsonSchema: responseJsonSchema), ct).ConfigureAwait(false);
+            BuildRequestBody(_model, systemPrompt, messages, responseJsonSchema: responseJsonSchema, maxTokens: _maxTokens, effort: _effort), ct).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -97,7 +105,8 @@ public sealed class AnthropicDirectClient : ILlmClient
                         _model,
                         systemPrompt,
                         BuildMessages(history, screens, userText, includeImageTransformations: false),
-                        includeTuning: false),
+                        includeTuning: false,
+                        maxTokens: _maxTokens),
                     ct).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                     errorBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
@@ -155,12 +164,14 @@ public sealed class AnthropicDirectClient : ILlmClient
         string systemPrompt,
         object messages,
         bool includeTuning = true,
-        string? responseJsonSchema = null)
+        string? responseJsonSchema = null,
+        int maxTokens = 1024,
+        string effort = "low")
     {
         var body = new Dictionary<string, object>
         {
             ["model"] = model,
-            ["max_tokens"] = 1024,
+            ["max_tokens"] = maxTokens,
             ["stream"] = true,
             ["system"] = systemPrompt,
             ["messages"] = messages,
@@ -171,7 +182,7 @@ public sealed class AnthropicDirectClient : ILlmClient
             return body;
         }
 
-        var outputConfig = new Dictionary<string, object> { ["effort"] = "low" };
+        var outputConfig = new Dictionary<string, object> { ["effort"] = effort };
         if (responseJsonSchema is not null)
         {
             // Structured outputs: the API guarantees JSON matching the schema, so the
